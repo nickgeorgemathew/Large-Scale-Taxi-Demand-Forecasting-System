@@ -36,7 +36,7 @@ def create_spark_session()->SparkSession:
 
 
 
-class TaxiDemandEtl:
+class TaxiDemandETL:
     def __init__(self,spark:SparkSession):
         self.spark=spark
 
@@ -200,3 +200,75 @@ class TaxiDemandEtl:
                 "avg_distance": None
             })
         )
+        before=df.count()
+        after=complete_df.count()
+        print(f"  → Added {after - before:,} zero-demand rows")
+        print(f"  → Complete grid: {after:,} total rows")
+        return complete_df
+
+
+
+    def write(self,df,output_path:str):
+        print(f"\n[5/5] Writing processed data to: {output_path}")
+
+        (
+            df
+            .write
+            .mode("overwrite")
+            .partitionBy("zone_id")
+            .parquet(output_path)
+        )
+
+        print(f"  Successfully written to {output_path}")
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    def run(self) -> None:
+        
+        print("=" * 60)
+        print("  NYC TAXI DEMAND ETL PIPELINE")
+        print("=" * 60)
+
+        # Load
+        df = self.load_raw(RAW_DATA_PATH, RAW_DATA_FORMAT)
+
+        # Rename to standard schema
+        df = self.rename_columns(df)
+
+        # Validate
+        self.validate_schema(df)
+
+        # Clean
+        df = self.clean(df)
+
+        # Aggregate to (zone, hour)
+        df = self.aggregate_demand(df)
+
+        # Fill zero-demand gaps
+        df = self.fill_missing_zeros(df)
+
+        # Write
+        self.write(df, PROCESSED_PATH)
+
+        print("\n" + "=" * 60)
+        print("  ETL COMPLETE")
+        print(f"  Output: {PROCESSED_PATH}")
+        print("=" * 60)
+
+
+
+if __name__ == "__main__":
+    spark = create_spark_session()
+    try:
+        pipeline = TaxiDemandETL(spark)
+        pipeline.run()
+    finally:
+        
+        spark.stop()
+        print("\n SparkSession stopped.")
