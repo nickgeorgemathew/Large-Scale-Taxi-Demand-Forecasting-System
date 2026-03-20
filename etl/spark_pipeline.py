@@ -42,7 +42,7 @@ class TaxiDemandEtl:
 
 
     
-    def load_raw(self,path:str,fmt:str)->"DataFrame":
+    def load_raw(self,path:str,fmt:str):
 
 
         if fmt=="parquet":
@@ -54,3 +54,31 @@ class TaxiDemandEtl:
                 .csv(path))
         else:
             raise ValueError(f"unsupported format:{fmt}. Use 'parquet' or 'csv' .")
+        
+        df.cache()
+
+        row_count=df.count()
+        print(f"loaded {row_count:,} raw rows")
+        print(f" columns:{df.columns}")
+        return df
+    
+    def rename_columns(self,df):
+        for raw_name,standard_name in COLUMN_MAP.items():
+            if raw_name in df.columns:
+                df=df.withColumnRenamed(raw_name,standard_name)
+        return df
+    
+
+
+
+
+
+    def validate_schema(self,df)->None:
+        missing=[col for col in REQUIRED_COLUMNS if col not in df.columns]
+        if missing:
+            raise ValueError(
+                f"Schema validation failed. Missing columns: {missing}\n"
+                f"Available columns: {df.columns}\n"
+                f"Check COLUMN_MAP in config/settings.py"
+            )
+        print(f"  → Schema validation passed. All required columns present.")
