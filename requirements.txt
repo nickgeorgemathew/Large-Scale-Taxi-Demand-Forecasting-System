@@ -1,0 +1,12 @@
+pyspark
+pandas
+lightgbm
+scikit-learn
+fastapi
+uvicorn
+pydantic
+plotly
+dash
+folium
+geopandas
+shapely
