@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+
+# Spark / Hive metadata
+metastore_db/
+spark-warehouse/
+derby.log
+checkpoint/
+
+# Spark Event Logs
+event_logs/
+
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment & secrets
+.env
+.env.*
+
+# Logs
+*.log
+*.sqlite3
+
+
+# Byte-compiled / optimized / DLL files
+*.dll
+*.o
+*.a
+*.out
+
+# Unit test / coverage reports
+.coverage
+htmlcov/
+.cache/
+nosetests.xml
+coverage.xml
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+Thumbs.db
