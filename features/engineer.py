@@ -64,3 +64,18 @@ class FeatureEngineer:
         print(f"  → Added temporal features: hour_of_day, day_of_week, "
               f"month, is_weekend, is_rush_am, is_rush_pm, is_night, is_holiday")
         return df
+
+
+
+    def add_lag_features(self,df:pd.DataFrame)->pd.DataFrame:
+        print(f"\n[3/6] Adding lag features for lags: {LAG_HOURS} hours...")
+        grouped=df.groupby("zone_id")["demand"]
+
+        for lag in LAG_HOURS:
+            col_name=f"lag_{lag}h"
+            df[col_name]=grouped.shift(lag)
+        
+        nan_count=df[f"lag_{max(LAG_HOURS)}h"].isna().sum()
+        print(f"  → Created {len(LAG_HOURS)} lag features")
+        print(f"  → {nan_count:,} NaN rows from lag warmup (will be dropped at finalize)")
+        return df
