@@ -25,7 +25,11 @@ from config.settings import(
 
 
 def create_spark_session()->SparkSession:
-    spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]").config("spark.driver.memory",SPARK_DRIVER_MEMORY).config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS).config("spark.sql.adaptive.enabled","true").config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
+    spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
+           .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
+           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.adaptive.enabled","true")
+           .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
         .getOrCreate())
     spark.sparkContext.setLogLevel("WARN")
     print(f"SparkSession created | version: {spark.version}")

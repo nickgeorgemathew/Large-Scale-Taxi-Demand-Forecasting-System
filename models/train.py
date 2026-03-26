@@ -2,11 +2,24 @@ import lightgbm
 import pandas as pd
 import numpy as np
 from lightgbm import LGBMRegressor
-from sklearn.metrics import compute_metrics
+from lightgbm import early_stopping,log_evaluation
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import json
+import optuna
+from pathlib import Path
 import time
 import  joblib
+from config.settings import (
+    PROCESSED_PATH, FEATURES_PATH,
+    LAG_HOURS, ROLLING_WINDOWS,
+    TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
+    TARGET_COLUMN, FEATURE_COLUMNS
+)
 
 
+PROJECT_ROOT = Path(__file__).parent.parent
+MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
+MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 class ModelTrainer:
     def __init__(self):
@@ -14,73 +27,247 @@ class ModelTrainer:
     
 
 
-    def split_data(self,df:pd.DataFrame,val_start,test_start)->pd.DataFrame:
-        self.train=df[df.hour_timestamp<val_start]
+    def split_data(self,df:pd.DataFrame)->pd.DataFrame:
+        self.train=df[df.hour_timestamp<TRAIN_END_DATE]
 
-        self.val=df[(df.hour_timestamp>=val_start)&df.hour_timestamp < test_start]
-        self.test=df[df.hour_timestamp >= test_start]
-        assert train.hour_timestamp.max() < val.hour_timestamp.min()
-        assert val.hour_timestamp.max() < test.hour_timestamp.min()
+        self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&df.hour_timestamp < VAL_END_DATE]
+        self.test=df[df.hour_timestamp >= TEST_START_DATE]
+        assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
+        assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
         
-        print(f"Train: {train.shape}, Val: {val.shape}, Test: {test.shape}")
+        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
         
         return self.train, self.val, self.test
-
-
-    def baseline_naive_seasonal(df):
-        preds = df['lag_168h']
-        return compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
     
 
+    def compute_metrics(y_true, y_pred, label=''):
+        mae = mean_absolute_error(y_true, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        r2 = r2_score(y_true, y_pred)
+        
+        print(f"\n{'='*60}")
+        print(f"  {label}")
+        print(f"{'='*60}")
+        print(f"  MAE:  {mae:.4f}")
+        print(f"  RMSE: {rmse:.4f}")
+        print(f"  R²:   {r2:.4f}")
+        
+        return {'mae': mae, 'rmse': rmse, 'r2': r2}
 
-    def train_model(self,train_df:pd.DataFrame,val_df:pd.DataFrame):
+    def baseline_naive_seasonal(self,df):
+        preds = df['lag_168h']
+        return self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
+        
+    def tune_hyperparameters(self, n_trials=50):
+        def objective(trial):
+            params = {
+                'n_estimators': 2000,
+                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+                'num_leaves': trial.suggest_int('num_leaves', 20, 100),
+                'min_child_samples': trial.suggest_int('min_child_samples', 10, 50),
+                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                'reg_alpha': trial.suggest_float('reg_alpha', 0, 10),
+                'reg_lambda': trial.suggest_float('reg_lambda', 0, 10),
+            }
+            
+            model = LGBMRegressor(**params, random_state=42, verbose=-1)
+            model.fit(
+                self.X_train, self.y_train,
+                eval_set=[(self.X_val, self.y_val)],
+                callbacks=[early_stopping(100, verbose=False)]
+            )
+            
+            y_pred = model.predict(self.X_val)
+            rmse = np.sqrt(mean_squared_error(self.y_val, y_pred))
+            return rmse
+        
+        study = optuna.create_study(direction='minimize')
+        study.optimize(objective, n_trials=n_trials)
+        
+        print(f"\nBest hyperparameters: {study.best_params}")
+        print(f"Best RMSE: {study.best_value:.4f}")
+        
+        return self.best_model.update(study.best_params)
+
+
+    def train_model(self):
         start=time.perf_counter()
-        feature_cols = [
-            'hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday',
-            'is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded',
-            'lag_1h', 'lag_2h', 'lag_3h', 'lag_6h', 'lag_24h', 'lag_48h', 'lag_168h',
-            'roll_mean_3h', 'roll_mean_6h', 'roll_mean_24h',
-            'roll_std_6h', 'mean', 'std'   
-        ]
+        
 
-        X_train=train_df[feature_cols]
-        y_train=train_df['demand']
-        X_val=val_df[feature_cols]
-        y_val=val_df['demand']
+        X_train=self.train[FEATURE_COLUMNS]
+        y_train=self.train[TARGET_COLUMN]
+        X_val=self.val[FEATURE_COLUMNS]
+        y_val=self.val[TARGET_COLUMN]
 
 
         self.model=LGBMRegressor(
-            n_estimators=2000,
-            learning_rate=0.05,
-            num_leaves=63,
-            min_child_leaves=20,
-            subsample=0.8,
-            colsample_bytree=0.8
+            **self.best_model
         )
         print("="*60)
         print("fitting the model")
         print("="*60)
 
-        self.model.fit(X_train,y_train,eval_set=[(X_val, y_val)],
-        callbacks=[early_stopping(100), log_evaluation(100)])
+        self.model.fit(X_train,y_train,
+                       eval_set=[(X_val, y_val)],
         
-        end=(start-time.perf_counter())*1000
+        callbacks=[early_stopping(100), log_evaluation(100)]
+        )
+        
+        end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
-        
-        joblib.dump(self.model,"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/lgbm_demand_v1.pkl")
-        
-        
-        joblib.dump(feature_cols,"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/feature_cols.json")
 
+        
         return self.model
 
 
-    def plot_feature(self):
-        lgb.plot(self.model,max_num_features=20)
 
 
-    def run(self):
+
+    def save_best_model(self):
+         
+        model_path = MODEL_DIR / "lgbm_demand_v1.pkl"
+        joblib.dump(self.model, model_path)
+            
+        with open(MODEL_DIR/"feature_cols.json",'w') as f:
+            json.dump(FEATURE_COLUMNS,f)
+
+
+
+
+
+    def analyze_feature_importance(self, top_n=20):
+        """Show which features matter most."""
+        importance_df = pd.DataFrame({
+            'feature': self.feature_cols,
+            'importance': self.model.feature_importances_
+        }).sort_values('importance', ascending=False)
+        
+        print('='*60)
+        print(f"  Top {top_n} Most Important Features")
+        print("="*60)
+        print(importance_df.head(top_n).to_string(index=False))
+        
+        # Plot
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(10, 8))
+        plt.barh(importance_df['feature'].head(top_n), 
+                importance_df['importance'].head(top_n))
+        plt.xlabel('Importance')
+        plt.title('Feature Importance')
+        plt.gca().invert_yaxis()
+        plt.tight_layout()
+        plt.savefig(MODEL_DIR / 'feature_importance.png', dpi=150)
+        plt.close()
+        
+        return importance_df
+
+
+
+
+
+
+    def analyze_residuals(self,df:pd.DataFrame,split_name:str):
+    
+        X = df[FEATURE_COLUMNS]
+        y_true = df['demand']
+        y_pred = self.model.predict(X)
+        
+        
+        residuals = y_true - y_pred
+        
+        # By hour
+        df['residual'] = residuals
+        hourly_error = df.groupby('hour_of_day')['residual'].agg(['mean', 'std'])
+        
+        print(f"\n{'='*60}")
+        print(f"  Error by Hour of Day({split_name})")
+        print(f"{'='*60}")
+        print(hourly_error)
+        
+        # By zone (find worst zones)
+        zone_error = df.groupby('zone_id').agg({
+            'residual': ['mean', 'std', 'count']
+        }).round(2)
+        zone_error.columns = ['mean_error', 'std_error', 'count']
+        zone_error = zone_error.sort_values('mean_error', key=abs, ascending=False)
+        
+        print(f"\n{'='*60}")
+        print(f"  Top 10 Worst Zones (Highest Error)")
+        print(f"{'='*60}")
+        print(zone_error.head(10))
+
+
+
+    #run the entire pipeline
+    def run_complete_pipeline(self):
+        """Full training and evaluation pipeline."""
+        
+        # 1. Split data
+        print("\n" + "="*60)
+        print("  STEP 1: SPLITTING DATA")
+        print("="*60)
+        self.split_data(PROCESSED_PATH)
+        
+        # 2. Baseline
+        print("\n" + "="*60)
+        print("  STEP 2: BASELINE MODEL")
+        print("="*60)
+        baseline_metrics = self.baseline_naive_seasonal(self.test)
+        
+        # 3. Fine tune hyper parameter of model
+        print("\n" + "="*60)
+        print("  STEP 3: Fine tuning hyperparameters")
+        print("="*60)
+        self.tune_hyperparameters()
+        
+
+
+        # 4. Train model
+        print("\n" + "="*60)
+        print("  STEP 4: TRAINING LIGHTGBM")
+        print("="*60)
         self.train_model()
-        self.plot_feature()
 
+        # 5. Evaluate
+        print("\n" + "="*60)
+        print("  STEP 5: EVALUATION")
+        print("="*60)
+        train_metrics = self.evaluate_model(self.train, self.model, 'Train')
+        val_metrics = self.evaluate_model(self.val, self.model, 'Validation')
+        test_metrics = self.evaluate_model(self.test, self.model, 'Test')
+        
+        # 5. Feature importance
+        print("\n" + "="*60)
+        print("  STEP 5: FEATURE ANALYSIS")
+        print("="*60)
+        importance_df = self.analyze_feature_importance()
+        
+        # 6. Residual analysis
+        print("\n" + "="*60)
+        print("  STEP 6: ERROR ANALYSIS")
+        print("="*60)
+        self.analyze_residuals(self.test, 'Test')
+
+
+         # 6. Residual analysis
+        print("\n" + "="*60)
+        print("  STEP 7:save model and features")
+        print("="*60)
+        self.save_best_model()
+        
+        # 7. Save everything
+        self.save_artifacts()
+        
+        print("\n" + "="*60)
+        print("  PIPELINE COMPLETE")
+        print("="*60)
+        
+        return {
+            'baseline': baseline_metrics,
+            'train': train_metrics,
+            'val': val_metrics,
+            'test': test_metrics,
+            'feature_importance': importance_df
+        }
     

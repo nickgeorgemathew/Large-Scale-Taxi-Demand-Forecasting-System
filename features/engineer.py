@@ -154,6 +154,9 @@ class FeatureEngineer:
         print(f"  → Added zone_mean_demand, zone_std_demand, borough_encoded")
         print(f"  → Borough distribution:\n{df['borough'].value_counts()}")
         return df
+
+
+        
     def finalise(self,df:pd.DataFrame)->pd.DataFrame:
         print(f"\n[6/6] Finalizing feature matrix...")
         rows_before=len(df)
