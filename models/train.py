@@ -1,12 +1,12 @@
 import lightgbm
 import pandas as pd
 import numpy as np
-from lightgbm import LGBMRegressor
-from lightgbm import early_stopping,log_evaluation
+from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import json
 import optuna
 from pathlib import Path
+import numpy as np
 import time
 import  joblib
 from config.settings import (
@@ -40,7 +40,7 @@ class ModelTrainer:
         return self.train, self.val, self.test
     
 
-    def compute_metrics(y_true, y_pred, label=''):
+    def compute_metrics(self,y_true, y_pred, label=''):
         mae = mean_absolute_error(y_true, y_pred)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
         r2 = r2_score(y_true, y_pred)
@@ -54,10 +54,19 @@ class ModelTrainer:
         
         return {'mae': mae, 'rmse': rmse, 'r2': r2}
 
-    def baseline_naive_seasonal(self,df):
+    
+    
+    def baseline_naive_seasonal(self,df:pd.DataFrame):
+
         preds = df['lag_168h']
-        return self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
+        metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
         
+        return metrics
+        
+   
+   
+   
+   
     def tune_hyperparameters(self, n_trials=50):
         def objective(trial):
             params = {
@@ -87,8 +96,9 @@ class ModelTrainer:
         
         print(f"\nBest hyperparameters: {study.best_params}")
         print(f"Best RMSE: {study.best_value:.4f}")
+        self.best_model.update(study.best_params)
         
-        return self.best_model.update(study.best_params)
+        return self.best_model
 
 
     def train_model(self):
@@ -122,8 +132,40 @@ class ModelTrainer:
 
 
 
+    def evaluate_model(self,df:pd.DataFrame,model,split:str=""):
+        y_true = df['demand']
+        y_pred = self.model.predict(df[FEATURE_COLUMNS])
+        y_pred = pd.clip(y_pred, min=0)  
+        print(f"evaluation for {split}")
+        
+        # Global metrics
+        MAE  = mean_absolute_error(y_true, y_pred)
+        RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
+        baseline=self.baseline_naive_seasonal(df)
+         # Compare to baseline
+        print(f"Model MAE: {MAE:.2f} | Baseline MAE: {baseline['mae']:.2f}")
+        print(f"Model RMSE: {RMSE:.2f} | Baseline RMSE: {baseline['rmse']:.2f}")
+        
+        # Per-zone breakdown (critical for understanding where model fails)
+        zone_errors = test_df.copy()
+        abs=y_true - y_pred
+        zone_errors['abs_error'] = -abs if abs <0 else abs
+        per_zone = zone_errors.groupby('zone_id')['abs_error'].mean()
+         # Identify: worst 10 zones → likely outlier zones (airports, stadiums)
+        # These are good candidates for a separate specialized model
+        
+        # Per-hour breakdown
+        zone_errors['hour'] = test_df['hour_of_day']
+        per_hour = zone_errors.groupby('hour')['abs_error'].mean()
+        plot per_hour → expect error peaks at 6-7am and 5-6pm (transition times)
+        
+        # Residuals over time
+        plot y_pred vs y_true scatter (should hug diagonal)
+        plot residuals (y_true - y_pred) over time (should be stationary, no drift)
 
-
+    
+    
+    
     def save_best_model(self):
          
         model_path = MODEL_DIR / "lgbm_demand_v1.pkl"
