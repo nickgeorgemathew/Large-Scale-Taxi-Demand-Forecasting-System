@@ -15,6 +15,10 @@ from config.settings import (
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
     TARGET_COLUMN, FEATURE_COLUMNS
 )
+from evaluate import Evaluate
+
+
+
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -24,8 +28,9 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 class ModelTrainer:
     def __init__(self):
         self.best_model={}
+        self.baseline={}
     
-
+    
 
     def split_data(self,df:pd.DataFrame)->pd.DataFrame:
         self.train=df[df.hour_timestamp<TRAIN_END_DATE]
@@ -37,32 +42,11 @@ class ModelTrainer:
         
         print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
         
-        return self.train, self.val, self.test
-    
-
-    def compute_metrics(self,y_true, y_pred, label=''):
-        mae = mean_absolute_error(y_true, y_pred)
-        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-        r2 = r2_score(y_true, y_pred)
-        
-        print(f"\n{'='*60}")
-        print(f"  {label}")
-        print(f"{'='*60}")
-        print(f"  MAE:  {mae:.4f}")
-        print(f"  RMSE: {rmse:.4f}")
-        print(f"  R²:   {r2:.4f}")
-        
-        return {'mae': mae, 'rmse': rmse, 'r2': r2}
+        return self.train, self.val, self.test 
 
     
     
-    def baseline_naive_seasonal(self,df:pd.DataFrame):
-
-        preds = df['lag_168h']
-        metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
-        
-        return metrics
-        
+    
    
    
    
@@ -132,36 +116,9 @@ class ModelTrainer:
 
 
 
-    def evaluate_model(self,df:pd.DataFrame,model,split:str=""):
-        y_true = df['demand']
-        y_pred = self.model.predict(df[FEATURE_COLUMNS])
-        y_pred = pd.clip(y_pred, min=0)  
-        print(f"evaluation for {split}")
+    
         
-        # Global metrics
-        MAE  = mean_absolute_error(y_true, y_pred)
-        RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
-        baseline=self.baseline_naive_seasonal(df)
-         # Compare to baseline
-        print(f"Model MAE: {MAE:.2f} | Baseline MAE: {baseline['mae']:.2f}")
-        print(f"Model RMSE: {RMSE:.2f} | Baseline RMSE: {baseline['rmse']:.2f}")
-        
-        # Per-zone breakdown (critical for understanding where model fails)
-        zone_errors = test_df.copy()
-        abs=y_true - y_pred
-        zone_errors['abs_error'] = -abs if abs <0 else abs
-        per_zone = zone_errors.groupby('zone_id')['abs_error'].mean()
-         # Identify: worst 10 zones → likely outlier zones (airports, stadiums)
-        # These are good candidates for a separate specialized model
-        
-        # Per-hour breakdown
-        zone_errors['hour'] = test_df['hour_of_day']
-        per_hour = zone_errors.groupby('hour')['abs_error'].mean()
-        plot per_hour → expect error peaks at 6-7am and 5-6pm (transition times)
-        
-        # Residuals over time
-        plot y_pred vs y_true scatter (should hug diagonal)
-        plot residuals (y_true - y_pred) over time (should be stationary, no drift)
+       
 
     
     
@@ -173,6 +130,8 @@ class ModelTrainer:
             
         with open(MODEL_DIR/"feature_cols.json",'w') as f:
             json.dump(FEATURE_COLUMNS,f)
+        
+        
 
 
 
@@ -209,41 +168,12 @@ class ModelTrainer:
 
 
 
-    def analyze_residuals(self,df:pd.DataFrame,split_name:str):
     
-        X = df[FEATURE_COLUMNS]
-        y_true = df['demand']
-        y_pred = self.model.predict(X)
-        
-        
-        residuals = y_true - y_pred
-        
-        # By hour
-        df['residual'] = residuals
-        hourly_error = df.groupby('hour_of_day')['residual'].agg(['mean', 'std'])
-        
-        print(f"\n{'='*60}")
-        print(f"  Error by Hour of Day({split_name})")
-        print(f"{'='*60}")
-        print(hourly_error)
-        
-        # By zone (find worst zones)
-        zone_error = df.groupby('zone_id').agg({
-            'residual': ['mean', 'std', 'count']
-        }).round(2)
-        zone_error.columns = ['mean_error', 'std_error', 'count']
-        zone_error = zone_error.sort_values('mean_error', key=abs, ascending=False)
-        
-        print(f"\n{'='*60}")
-        print(f"  Top 10 Worst Zones (Highest Error)")
-        print(f"{'='*60}")
-        print(zone_error.head(10))
-
-
 
     #run the entire pipeline
     def run_complete_pipeline(self):
         """Full training and evaluation pipeline."""
+        evaluation=Evaluate()
         
         # 1. Split data
         print("\n" + "="*60)
@@ -255,7 +185,7 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 2: BASELINE MODEL")
         print("="*60)
-        baseline_metrics = self.baseline_naive_seasonal(self.test)
+        baseline_metrics = evaluation.baseline_naive_seasonal(self.test,split="test")
         
         # 3. Fine tune hyper parameter of model
         print("\n" + "="*60)
@@ -275,9 +205,8 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 5: EVALUATION")
         print("="*60)
-        train_metrics = self.evaluate_model(self.train, self.model, 'Train')
-        val_metrics = self.evaluate_model(self.val, self.model, 'Validation')
-        test_metrics = self.evaluate_model(self.test, self.model, 'Test')
+
+        test_metrics = evaluation.evaluate_model(self.test, self.model, 'Test')
         
         # 5. Feature importance
         print("\n" + "="*60)
@@ -289,7 +218,7 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 6: ERROR ANALYSIS")
         print("="*60)
-        self.analyze_residuals(self.test, 'Test')
+        evaluation.analyze_residuals(self.test, 'Test')
 
 
          # 6. Residual analysis
@@ -306,10 +235,8 @@ class ModelTrainer:
         print("="*60)
         
         return {
-            'baseline': baseline_metrics,
-            'train': train_metrics,
-            'val': val_metrics,
-            'test': test_metrics,
+            'baseline_metrics': baseline_metrics,
+            'test_metrics': test_metrics,
             'feature_importance': importance_df
         }
     
