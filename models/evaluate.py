@@ -46,7 +46,7 @@ class Evaluate:
 
 
 
-    def baseline_naive_seasonal(self,df:pd.DataFrame,split:str=""):
+    def baseline_naive_seasonal(self,df:pd.DataFrame,split:str=''):
 
         preds = df['lag_168h']
         metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
@@ -57,7 +57,7 @@ class Evaluate:
     
     
     
-    def smape(y_true, y_pred, epsilon=1e-10): 
+    def smape(self,y_true, y_pred, epsilon=1e-10): 
         y_true = np.array(y_true) 
         y_pred = np.array(y_pred) 
         numerator = 2 * np.abs(y_true - y_pred) 
@@ -68,32 +68,37 @@ class Evaluate:
 
 
 
-    def evaluate_model(self,df:pd.DataFrame,model,split:str=""):
+    def evaluate_model(self,df:pd.DataFrame,model,split:str=''):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
-        y_pred = pd.clip(y_pred, min=0)  
+        y_pred = np.clip(y_pred,0,None)  
+        
         print(f"evaluation for {split}")
+        
         baseline=self.baseline[split]
+        
         # Global metrics
         MAE  = mean_absolute_error(y_true, y_pred)
         RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
         r2 = r2_score(y_true, y_pred)
         SMAPE=self.smape(y_true,y_pred)
         model_metrics={'mae': MAE, 'rmse': RMSE, 'r2': r2,'smape':SMAPE}
+        
         self.metrics[split]=model_metrics
+        self.save_metrics(split)
         
          # Compare to baseline
         print(f"Model MAE: {MAE:.2f} | Baseline MAE: {baseline['mae']:.2f}")
         print(f"Model RMSE: {RMSE:.2f} | Baseline RMSE: {baseline['rmse']:.2f}")
-        print(f"Model r2: {r2:.2f} | Baseline RMSE: {baseline['r2']:.2f}")
+        print(f"Model r2: {r2:.2f} | Baseline r2: {baseline['r2']:.2f}")
         print(f"Model SMAPE: {SMAPE:.2f} | Baseline SMAPE: {baseline['smape']:.2f}")
         
         
         
         
-    def save_metrics(self):
-        with open(MODEL_DIR/"model_metrics.json",'w') as f:
-            json.dump(self.metrics,f)
+    def save_metrics(self,split:str=''):
+        with open(MODEL_DIR/f"model_metrics_{split}.json",'w') as f:
+            json.dump(self.metrics[split],f)
         
         
         
@@ -148,8 +153,7 @@ class Evaluate:
         
         # Per-zone breakdown (critical for understanding where model fails)
         zone_errors = test_df.copy()
-        abs=y_true - y_pred
-        zone_errors['abs_error'] = -abs if abs <0 else abs
+        zone_errors['abs_error'] = np.abs(y_true-y_pred)
         per_zone = zone_errors.groupby('zone_id')['abs_error'].mean()
         
        

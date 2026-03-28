@@ -185,7 +185,9 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 2: BASELINE MODEL")
         print("="*60)
-        baseline_metrics = evaluation.baseline_naive_seasonal(self.test,split="test")
+        baseline_metrics_train = evaluation.baseline_naive_seasonal(self.train,split="train")
+        baseline_metrics_val = evaluation.baseline_naive_seasonal(self.val,split="val")
+        baseline_metrics_test = evaluation.baseline_naive_seasonal(self.test,split="test")
         
         # 3. Fine tune hyper parameter of model
         print("\n" + "="*60)
@@ -205,8 +207,9 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 5: EVALUATION")
         print("="*60)
-
-        test_metrics = evaluation.evaluate_model(self.test, self.model, 'Test')
+        train_metrics=evaluation.evaluate_model(self.train, self.model, 'train')
+        val_metrics=evaluation.evaluate_model(self.val, self.model, 'val')
+        test_metrics = evaluation.evaluate_model(self.test, self.model, 'test')
         
         # 5. Feature importance
         print("\n" + "="*60)
@@ -235,8 +238,12 @@ class ModelTrainer:
         print("="*60)
         
         return {
-            'baseline_metrics': baseline_metrics,
-            'test_metrics': test_metrics,
-            'feature_importance': importance_df
+            'baseline_metrics_train': baseline_metrics_train,
+            'baseline_metrics_val':baseline_metrics_val,
+            'baseline_metrics_test':baseline_metrics_test,
+            'train metrics':train_metrics,
+            'validation_metrics':val_metrics,
+            'test metrics': test_metrics,
+            'feature importance': importance_df
         }
     
