@@ -79,6 +79,7 @@ class Evaluate:
             axs[i].bar(["baseline","model"],values)
             axs[i].set_title(val.upper())
             axs[i].ylabel(val.upper())
+        plt.savefig(f"models/artifacts/{split}_metric_plot.png")
         plt.tight_layout()
         plt.show()
 
@@ -108,6 +109,8 @@ class Evaluate:
         print(f"Model RMSE: {RMSE:.2f} | Baseline RMSE: {baseline['rmse']:.2f}")
         print(f"Model r2: {r2:.2f} | Baseline r2: {baseline['r2']:.2f}")
         print(f"Model SMAPE: {SMAPE:.2f} | Baseline SMAPE: {baseline['smape']:.2f}")
+
+        self.plot_metrics(split)
     
 
     
