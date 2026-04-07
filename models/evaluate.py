@@ -67,28 +67,19 @@ class Evaluate:
         return smape_value
     
     def plot_metrics(self,split:str=""):
-        fig,axs=plt.subplot()
-        
-        axs[0].plt(self.metrics[split]['mae'],self.baseline_metrics[split]['mae'],kind='bar')
-        axs[0].title("mean absolute error")
-        axs[0].xlabel()
-        axs[0].ylabel()
-        
-        axs[1].plt(self.metrics[split]['rmse'],self.baseline_metrics[split]['rmse'],kind='bar')
-        axs[1].title("mean absolute error")
-        axs[1].xlabel()
-        axs[1].ylabel()
+        fig,axs=plt.subplots(2, 2, figsize=(10,8))
+        axs=axs.flatten()
+        baseline_metrics=self.baseline[split]
+        model_metrics=self.metrics[split]
+        metric_names = ["mae", "rmse", "r2", "smape"]
 
-        axs[2].plt(self.metrics[split]['r2'],self.baseline_metrics[split]['r2'],kind='bar')
-        axs[2].title("mean absolute error")
-        axs[2].xlabel()
-        axs[2].ylabel()
 
-        axs[3].plt(self.metrics[split]['smape'],self.baseline_metrics[split]['smape'],kind='bar')
-        axs[3].title("mean absolute error")
-        axs[3].xlabel()
-        axs[3].ylabel()
-
+        for i,val in enumerate(metric_names):
+            values=[baseline_metrics[val],model_metrics[val]]
+            axs[i].bar(["baseline","model"],values)
+            axs[i].set_title(val.upper())
+            axs[i].ylabel(val.upper())
+        plt.tight_layout()
         plt.show()
 
 
