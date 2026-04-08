@@ -3,7 +3,8 @@ from config.settings import (
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
     TARGET_COLUMN, FEATURE_COLUMNS
-)from config.settings import (
+)
+from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     PUBLIC_HOLIDAYS_2022,
@@ -15,7 +16,8 @@ from config.settings import (
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
     TARGET_COLUMN, FEATURE_COLUMNS
-)from config.settings import(
+)
+from config.settings import(
     RAW_DATA_PATH, RAW_DATA_FORMAT,
     PROCESSED_PATH,
     COLUMN_MAP, REQUIRED_COLUMNS,
@@ -27,6 +29,7 @@ from config.settings import (
     TIME_GRANULARITY, FILL_MISSING_ZEROS,
     SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
 )
+from config.settings import LOG #file location for storing parquet logs
 # feature_cols = [
         #     'hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday',
         #     'is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded',

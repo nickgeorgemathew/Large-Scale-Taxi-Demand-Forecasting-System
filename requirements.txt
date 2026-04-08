@@ -10,3 +10,5 @@ dash
 folium
 geopandas
 shapely
+pyarrow
+fastparquet
