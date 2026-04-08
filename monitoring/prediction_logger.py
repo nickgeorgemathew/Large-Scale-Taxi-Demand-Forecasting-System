@@ -32,10 +32,28 @@ class prediction_logger:
         # Load, Combine, and Overwrite
         df_existing = pd.read_parquet(self.log_path)
 
+
         if df_existing:
-            df_combined = pd.concat([df_existing, df_logs], ignore_index=True)
-            df_combined.to_parquet(self.log_path, engine='pyarrow')
+            # perform a 'merge' with an 'indicator' to see which rows are new
+            check_merge = pd.merge(
+                df_logs, 
+                df_existing[['timestamp', 'zone_id']], 
+                on=['timestamp', 'zone_id'], 
+                how='left', 
+                indicator=True
+            )
+            # Check if any row in df_logs was found in df_existing
+            is_duplicate = (check_merge['_merge'] == 'both').any()
+            
+            if is_duplicate:
+                
+                return "duplicate predictions"
+            else:
+                df_combined = pd.concat([df_existing, df_logs], ignore_index=True)
+                df_combined.to_parquet(self.log_path, engine='pyarrow')
+
         else:
+
             df_logs.to_parquet(self.log_path,engine="pyarrow") 
 
         return log_dict
