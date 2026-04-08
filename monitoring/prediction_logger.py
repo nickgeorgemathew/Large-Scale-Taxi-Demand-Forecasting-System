@@ -1,11 +1,12 @@
 import pandas as pd
 from datetime import datetime
-import pathlib 
+from pathlib import Path 
 from config.settings import LOG
 
 
 class prediction_logger:
     def __init__(self):
+        self.log_path=Path(LOG)
         
         pass
 
@@ -29,13 +30,13 @@ class prediction_logger:
 
         df_logs=pd.DataFrame(log_dict)        
         # Load, Combine, and Overwrite
-        df_existing = pd.read_parquet(LOG)
+        df_existing = pd.read_parquet(self.log_path)
 
         if df_existing:
             df_combined = pd.concat([df_existing, df_logs], ignore_index=True)
-            df_combined.to_parquet(LOG, engine='pyarrow')
+            df_combined.to_parquet(self.log_path, engine='pyarrow')
         else:
-            df_logs.to_parquet(LOG,engine="pyarrow") 
+            df_logs.to_parquet(self.log_path,engine="pyarrow") 
 
         return log_dict
 
