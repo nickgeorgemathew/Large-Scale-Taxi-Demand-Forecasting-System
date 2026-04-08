@@ -42,4 +42,5 @@ class prediction_logger:
 
 
     def load_prediciton_logs(self):
-        pass
+        df=pd.read_parquet(self.log_path)
+        return df
