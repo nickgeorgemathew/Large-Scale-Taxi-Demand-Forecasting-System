@@ -128,7 +128,7 @@ class MetricsMonitor:
 
 
         
-    def compare_with_baseline(self):
+    def compare_with_baseline(self,current_true,current_pred):
         #find how you can calculate the baseline
 
         with open('model/artifacts/model_metrics_test.json','r') as f:
@@ -136,6 +136,8 @@ class MetricsMonitor:
         
         baseline=pd.DataFrame(baseline)
         # how to calculate current metric
+
+        self.metrics= self.compute_metrics(current_true,current_pred)
         
         metric_names = ["mae", "rmse", "r2", "smape"]
         flags={"mae_degrade":False, "rmse_degraded":False, "r2_degraded":False, "smape_degraded":False}
@@ -144,7 +146,7 @@ class MetricsMonitor:
             
             if self.metrics[metric]>baseline[metric]:
                 
-                print(f" current {metric}:{self.metrics[metric]} vs baseline {metric}:{self.metrics[metric]}")
+                print(f" current {metric}:{self.metrics[metric]} vs baseline {metric}:{baseline[metric]}")
                 #check what to print
                 #add retraining triggers
                 print("retrain /fix model")
@@ -152,7 +154,38 @@ class MetricsMonitor:
             
             else:
                 
-                print(f" current {metric}:{self.metrics[metric]} vs baseline {metric}:{self.metrics[metric]}")
+                print(f" current {metric}:{self.metrics[metric]} vs baseline {metric}:{baseline[metric]}")
+                #check what to print
+                print("model still usable")
+        
+        return flags
+    
+    def detect_performance_drift(self,filename,threshold:float=1.3):
+        with open('model/artifacts/model_metrics_test.json','r') as f:
+            baseline=json.load(f)
+        
+        training_metrics=pd.DataFrame(baseline)
+        rolling_metrics = pd.read_parquet(self.metric_path[filename])
+
+        
+
+        
+        metric_names = ["mae", "rmse", "r2", "smape"]
+        flags={"mae_drift":False, "rmse_drift":False, "r2_drift":False, "smape_drift":False}
+        
+        for metric in metric_names:
+            
+            if rolling_metrics[metric] > training_metrics[metric] * threshold:
+                
+                print(f" current {metric}:{rolling_metrics[metric]} vs baseline {metric}:{training_metrics[metric]}")
+                #check what to print
+                #add retraining triggers
+                print("retrain /fix model")
+                flags[metric]=True
+            
+            else:
+                
+                print(f" current {metric}:{rolling_metrics[metric]} vs baseline {metric}:{training_metrics[metric]}")
                 #check what to print
                 print("model still usable")
         
