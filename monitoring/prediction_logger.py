@@ -24,7 +24,7 @@ class prediction_logger:
             "residual": residual,
             "zone_id":zone_id,
             "prediction":prediction,
-            "actual":actual
+            "actual":actual if actual else None
         }
         
 

@@ -43,7 +43,7 @@ class Evaluate:
             print(f"  R²:   {r2:.4f}")
             print(f"  SMAPE:   {smape:.4f}")
         
-        return {'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape}
+        return {'label':label,'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape} if label else {'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape}
     
 
 
