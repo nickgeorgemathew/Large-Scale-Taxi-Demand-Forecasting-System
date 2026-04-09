@@ -11,4 +11,3 @@ folium
 geopandas
 shapely
 pyarrow
-fastparquet

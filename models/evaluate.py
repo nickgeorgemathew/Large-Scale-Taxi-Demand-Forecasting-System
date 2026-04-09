@@ -28,19 +28,20 @@ class Evaluate:
         self.baseline={}
 
 
-    def compute_metrics(self,y_true, y_pred, label=''):
+    def compute_metrics(self,y_true, y_pred, label:str='',print:bool=False):
         mae = mean_absolute_error(y_true, y_pred)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
         r2 = r2_score(y_true, y_pred)
         smape=self.smape(y_true, y_pred)
-        
-        print(f"\n{'='*60}")
-        print(f"  {label}")
-        print(f"{'='*60}")
-        print(f"  MAE:  {mae:.4f}")
-        print(f"  RMSE: {rmse:.4f}")
-        print(f"  R²:   {r2:.4f}")
-        print(f"  SMAPE:   {smape:.4f}")
+        if print is True:
+            print(f"\n{'='*60}")
+            if label:
+                print(f"  {label}")
+            print(f"{'='*60}")
+            print(f"  MAE:  {mae:.4f}")
+            print(f"  RMSE: {rmse:.4f}")
+            print(f"  R²:   {r2:.4f}")
+            print(f"  SMAPE:   {smape:.4f}")
         
         return {'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape}
     

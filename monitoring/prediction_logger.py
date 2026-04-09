@@ -13,7 +13,7 @@ class prediction_logger:
     def log_predictions(self,features:dict,prediction,actual,model_version):
         
         #add features that are being used for prediction and monitioring
-        timestamp=features["timestamp"]
+        timestamp=pd.to_datetime(features["timestamp"])
         zone_id=features["zone_id"]
         residual= (actual-prediction) if actual else None
         
@@ -24,7 +24,7 @@ class prediction_logger:
             "residual": residual,
             "zone_id":zone_id,
             "prediction":prediction,
-            "actual_value":actual
+            "actual":actual
         }
         
 
@@ -59,6 +59,6 @@ class prediction_logger:
         return log_dict
 
 
-    def load_prediciton_logs(self):
-        df=pd.read_parquet(self.log_path)
+    def load_prediciton_logs(self,log_path):
+        df=pd.read_parquet(log_path)
         return df
