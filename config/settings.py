@@ -29,7 +29,8 @@ from config.settings import(
     TIME_GRANULARITY, FILL_MISSING_ZEROS,
     SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
 )
-from config.settings import LOG #file location for storing parquet logs
+from config.settings import LOG,#file location for storing parquet logs
+METRICLOG #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
 # feature_cols = [
         #     'hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday',
         #     'is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded',

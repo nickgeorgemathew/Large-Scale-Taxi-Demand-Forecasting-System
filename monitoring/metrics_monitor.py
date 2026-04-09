@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime,timedelta
 from models.evaluate import Evaluate
 import json
+from config.settings import METRICLOG
 
 
 
@@ -24,6 +25,7 @@ class MetricsMonitor:
     def load_logs(self):
         self.pred_log=prediction_logger()
         self.log_path=Path(LOG)
+        self.metric_path=Path(METRICLOG)
         try:
             
             self.log_df=self.pred_log.load_prediciton_logs(self.log_path)
@@ -34,6 +36,40 @@ class MetricsMonitor:
             return("add logs or update log location")
             
     
+
+    def save_metrics_parquet(self,metrics,label,filename):
+        df_metrics=pd.DataFrame(metrics)        
+        # Load, Combine, and Overwrite
+        df_existing = pd.read_parquet(self.metric_path[filename])
+
+
+        if df_existing:
+            # perform a 'merge' with an 'indicator' to see which rows are new
+            check_merge = pd.merge(
+                df_metrics, 
+                df_existing[[label]], 
+                on=[label], 
+                how='left', 
+                indicator=True
+            )
+            # Check if any row in df_logs was found in df_existing
+            is_duplicate = (check_merge['_merge'] == 'both').any()
+            
+            if is_duplicate:
+                
+                return "duplicate predictions"
+            else:
+                df_combined = pd.concat([df_existing, df_metrics], ignore_index=True)
+                df_combined.to_parquet(self.log_path, engine='pyarrow')
+
+        else:
+
+            df_metrics.to_parquet(self.log_path,engine="pyarrow") 
+
+        return df_metrics
+    
+
+
 
 
 
@@ -72,6 +108,7 @@ class MetricsMonitor:
             #check file path adding using config
             with open('model/artifacts/metric_history_24h.json','w') as f:
                 json.dump(metrics_24,f)
+            self.save_metrics_parquet(metrics_24,label=f"window_24h_{window_24h}",file_name='metric_history_24h')
         
         
         
@@ -82,6 +119,7 @@ class MetricsMonitor:
         #check file path adding using config
         with open('model/artifacts/metric_history_week.json','w') as f:
             json.dump(metrics_week,f)
+        self.save_metrics_parquet(metrics_week,label=f"window_week_{window_week}",file_name='metric_history_week')
 
         
         return metrics_week,metrics_24

@@ -10,25 +10,8 @@ class prediction_logger:
         
         pass
 
-    def log_predictions(self,features:dict,prediction,actual,model_version):
-        
-        #add features that are being used for prediction and monitioring
-        timestamp=pd.to_datetime(features["timestamp"])
-        zone_id=features["zone_id"]
-        residual= (actual-prediction) if actual else None
-        
-        #add features and info that need to be logged
-        log_dict={
-            "timestamp":timestamp,
-            "model_version":model_version,
-            "residual": residual,
-            "zone_id":zone_id,
-            "prediction":prediction,
-            "actual":actual if actual else None
-        }
-        
-
-        df_logs=pd.DataFrame(log_dict)        
+    def save_logs_parquet(self,logs):
+        df_logs=pd.DataFrame(logs)        
         # Load, Combine, and Overwrite
         df_existing = pd.read_parquet(self.log_path)
 
@@ -56,7 +39,30 @@ class prediction_logger:
 
             df_logs.to_parquet(self.log_path,engine="pyarrow") 
 
-        return log_dict
+        return logs
+    
+
+
+    def log_predictions(self,features:dict,prediction,actual,model_version):
+        
+        #add features that are being used for prediction and monitioring
+        timestamp=pd.to_datetime(features["timestamp"])
+        zone_id=features["zone_id"]
+        residual= (actual-prediction) if actual else None
+        
+        #add features and info that need to be logged
+        log_dict={
+            "timestamp":timestamp,
+            "model_version":model_version,
+            "residual": residual,
+            "zone_id":zone_id,
+            "prediction":prediction,
+            "actual":actual if actual else None
+        }
+        self.save_logs_parquet(log_dict)
+        
+
+        
 
 
     def load_prediciton_logs(self,log_path):
