@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import json
+import pyspark.pandas as ps
 from pathlib import Path
 import numpy as np
 import time
@@ -48,7 +49,7 @@ class Evaluate:
 
 
 
-    def baseline_naive_seasonal(self,df:pd.DataFrame,split:str=''):
+    def baseline_naive_seasonal(self,df:ps.DataFrame,split:str=''):
 
         preds = df['lag_168h']
         metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
@@ -86,7 +87,7 @@ class Evaluate:
 
 
 
-    def evaluate_model(self,df:pd.DataFrame,model,split:str=''):
+    def evaluate_model(self,df:ps.DataFrame,model,split:str=''):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
         y_pred = np.clip(y_pred,0,None)  
@@ -130,7 +131,7 @@ class Evaluate:
         
         
         
-    def analyze_residuals(self,df:pd.DataFrame,split_name:str,model):
+    def analyze_residuals(self,df,split_name:str,model):
     
         X = df[FEATURE_COLUMNS]
         self.y_true = df['demand']

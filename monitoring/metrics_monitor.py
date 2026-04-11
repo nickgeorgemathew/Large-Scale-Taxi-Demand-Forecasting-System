@@ -3,12 +3,26 @@ import pandas as pd
 from monitoring.prediction_logger import prediction_logger
 from config.settings import LOG
 from pathlib import Path
+from pyspark.sql import SparkSession
+from pyspark.sql import Functions as f
+import pyspark.pandas as ps
 from datetime import datetime,timedelta
 from models.evaluate import Evaluate
 import json
-from config.settings import METRICLOG
+from config.settings import (METRICLOG,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY)
 
 
+
+def create_spark_session()->SparkSession:
+    spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
+           .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
+           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.adaptive.enabled","true")
+           .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
+        .getOrCreate())
+    spark.sparkContext.setLogLevel("WARN")
+    print(f"SparkSession created | version: {spark.version}")
+    return spark
 
 
 

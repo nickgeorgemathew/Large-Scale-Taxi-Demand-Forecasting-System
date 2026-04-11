@@ -57,6 +57,7 @@ class ModelTrainer:
 
     def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
         
+        df=df.pandas_api()
         
 
         self.train=df[df.hour_timestamp<TRAIN_END_DATE]
