@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession       
 from pyspark.sql import Functions as f
 from pyspark.sql.types import(
     StructType,StructField,IntegerType,FloatType,TimestampType,stringType
@@ -101,37 +101,37 @@ class TaxiDemandETL:
         df=df.dropna(subset=["pickup_datetime","zone_id","fare_amount","trip_distance"])
 
 
-        df=df.withColumn("zone_id",F.col("zone_id").cast(IntegerType()))
-        df=df.withColumn("far_amount",F.col("fare_amount").cast(FloatType()))
-        df=df.withColumn("trip_distance",F.col("trip_distance").cast(FloatType()))
-        df=df.withColumn("pickup_datetime",F.col("pickup_datetime").cast(TimestampType()))
+        df=df.withColumn("zone_id",f.col("zone_id").cast(IntegerType()))
+        df=df.withColumn("far_amount",f.col("fare_amount").cast(FloatType()))
+        df=df.withColumn("trip_distance",f.col("trip_distance").cast(FloatType()))
+        df=df.withColumn("pickup_datetime",f.col("pickup_datetime").cast(TimestampType()))
 
 
 
 
         df=df.filter(
-            F.col("zone_id").between(VALID_ZONE_MIN,VALID_ZONE_MAX)
+            f.col("zone_id").between(VALID_ZONE_MIN,VALID_ZONE_MAX)
         )
 
         df=df.filter(
-            (F.col("fare_amount")>=MIN_FARE)&
-            (F.col("fare_amount")<=MAX_FARE)
+            (f.col("fare_amount")>=MIN_FARE)&
+            (f.col("fare_amount")<=MAX_FARE)
         )
 
         df=df.filter(
-            (F.col("trip_distance")>=MIN_DISTANCE)&
-            (F.col("fare_amount")<=MAX_DISTANCE)
+            (f.col("trip_distance")>=MIN_DISTANCE)&
+            (f.col("fare_amount")<=MAX_DISTANCE)
         )
 
 
         if "passenger_count" in df.columns:
             df=df.filter(
-                F.col("passenger_count").between(MIN_PASSENGER,MAX_PASSENGER)
+                f.col("passenger_count").between(MIN_PASSENGER,MAX_PASSENGER)
             )
 
         df=df.filter(
-            (F.col("pickup_datetime")>=F.lit(DATA_START_DATE))&
-            (F.col("pickup_datetime")<=F.lit(DATA_END_DATE))
+            (f.col("pickup_datetime")>=F.lit(DATA_START_DATE))&
+            (f.col("pickup_datetime")<=F.lit(DATA_END_DATE))
         )
 
 
@@ -160,9 +160,9 @@ class TaxiDemandETL:
         demand_df=(
             df.groupby("zone_id","hour_timestamp")
             .agg(
-                F.count("*").alias("demand"),
-                F.avg("fare_amount").alias("avg_fare"),
-                F.avg("trip_distance").alias(
+                f.count("*").alias("demand"),
+                f.avg("fare_amount").alias("avg_fare"),
+                f.avg("trip_distance").alias(
                     "avg_distance"
                 )
             )

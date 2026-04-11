@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from pyspark.sql import SparkSession
+from pyspark.sql import Functions as f
+import pyspark.pandas as ps
 import json
 import optuna
 from pathlib import Path
@@ -13,7 +16,7 @@ from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS
+    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
 )
 from evaluate import Evaluate
 
@@ -25,18 +28,41 @@ PROJECT_ROOT = Path(__file__).parent.parent
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def create_spark_session()->SparkSession:
+    spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
+           .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
+           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.adaptive.enabled","true")
+           .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
+        .getOrCreate())
+    spark.sparkContext.setLogLevel("WARN")
+    print(f"SparkSession created | version: {spark.version}")
+    return spark
+
+
 class ModelTrainer:
-    def __init__(self):
+    def __init__(self,spark):
+        self.spark=spark
         self.best_model={}
         self.baseline={}
     
     
 
-    def split_data(self,df:pd.DataFrame)->pd.DataFrame:
-        self.train=df[df.hour_timestamp<TRAIN_END_DATE]
 
-        self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&df.hour_timestamp < VAL_END_DATE]
+    def load_data(self,file_path):
+        df=self.spark.read.parquet(file_path)
+        return df
+
+
+    def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
+        
+        
+
+        self.train=df[df.hour_timestamp<TRAIN_END_DATE]
+        self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&(df.hour_timestamp < VAL_END_DATE)]
         self.test=df[df.hour_timestamp >= TEST_START_DATE]
+        
         assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
         assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
         
@@ -45,7 +71,25 @@ class ModelTrainer:
         return self.train, self.val, self.test 
 
     
-    
+
+    def split_data(self,df):
+        
+        self.train=df.filter(f.col("hour_timestamp") < TRAIN_END_DATE)
+        self.val=df.filter((f.col("hour_timestamp")>=TRAIN_END_DATE)&(f.col("hour_timestamp") < VAL_END_DATE))
+        self.test=df.filter(f.col("hour_timestamp") >= TEST_START_DATE)
+
+        train_max=self.train.select(f.max("hour_timestamp")).collect()[0][0]
+        val_min=self.val.select(f.min("hour_timestamp")).collect()[0][0]
+        val_max=self.val.select(f.max("hour_timestamp")).collect()[0][0]
+        test_min=self.val.select(f.min("hour_timestamp")).collect()[0][0]
+
+        assert train_max < val_min
+        assert val_max < test_min
+
+        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
+        
+        return self.train, self.val, self.test 
+
     
    
    

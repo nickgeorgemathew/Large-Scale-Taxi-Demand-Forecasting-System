@@ -160,15 +160,18 @@ class MetricsMonitor:
         
         return flags
     
+    
+    
+    
     def detect_performance_drift(self,filename,threshold:float=1.3):
+        
         with open('model/artifacts/model_metrics_test.json','r') as f:
             baseline=json.load(f)
         
+        
         training_metrics=pd.DataFrame(baseline)
         rolling_metrics = pd.read_parquet(self.metric_path[filename])
-
-        
-
+            
         
         metric_names = ["mae", "rmse", "r2", "smape"]
         flags={"mae_drift":False, "rmse_drift":False, "r2_drift":False, "smape_drift":False}
