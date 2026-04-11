@@ -64,9 +64,10 @@ class DriftDetector:
         self.spark=spark
         
 
-    def load_training_distribution(self,file_path):
+    def load_dataframe(self,file_path):
        
         df=self.spark.read.parquet(file_path)
+        df=df.pandas_api()
         return df
     
     
