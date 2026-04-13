@@ -70,17 +70,20 @@ class DriftDetector:
     
     def compute_feature_drift(self,training,current,threshold):
         
-        result={}
+        feature_flag={}
+
         for feature in MONITORED_FEATURES:
+            training[feature].dropna()
+            current[feature].dropna()
             
             psi=calculate_psi(training[feature],current[feature])
             
             if psi > threshold:
-                result.update({f"{feature}_drift":True})
+                feature_flag.update({f"{feature}_drift":True})
             else:
-                result.update({f"{feature}_drift":False})
+                feature_flag.update({f"{feature}_drift":False})
         
-        return result
+        return feature_flag
 
 
         
@@ -92,23 +95,26 @@ class DriftDetector:
         mean_residual=np.mean(residual)
         std_residual=np.std(residual)
         
-        result={"residual_drift":bool(np.abs(mean_residual)>threshold)}
+        residual_flag={"residual_drift":bool(np.abs(mean_residual)>threshold)}
 
-        return result
+        return residual_flag
 
 
         
     
     def detect_drift(self,feature_drift,residual_drift):
         
-        feature =[k if val is True else None for k,val in feature_drift ]
-        residual=[k if val is True else None for k,val in feature_drift ]
-
+        feature =[k for k,val in feature_drift.items() if val]
+        residual=[k for k,val in residual_drift.items() if val ]
+        
         if feature or residual :
             print("drift detected !!")
-            return feature_drift,residual_drift
+            drift_flag={"feature_drift":bool(len(feature)>0),"residual_drift":bool(len(residual)>0)}
+            return drift_flag
         else:
             print("No drift detected")
+            drift_flag={"feature_drift":False,"residual_drift": False}
+            return drift_flag
 
 
         

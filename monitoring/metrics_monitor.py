@@ -141,7 +141,7 @@ class MetricsMonitor:
         self.metrics= self.compute_metrics(current_true,current_pred)
         
         metric_names = ["mae", "rmse", "r2", "smape"]
-        flags={"mae_degrade":False, "rmse_degraded":False, "r2_degraded":False, "smape_degraded":False}
+        performance_flags={"mae_degrade":False, "rmse_degraded":False, "r2_degraded":False, "smape_degraded":False}
         
         for metric in metric_names:
             
@@ -151,7 +151,7 @@ class MetricsMonitor:
                 #check what to print
                 #add retraining triggers
                 print("retrain /fix model")
-                flags[metric]=True
+                performance_flags[metric]=True
             
             else:
                 
@@ -159,7 +159,7 @@ class MetricsMonitor:
                 #check what to print
                 print("model still usable")
         
-        return flags
+        return performance_flags
     
     
     
@@ -175,17 +175,14 @@ class MetricsMonitor:
             
         
         metric_names = ["mae", "rmse", "r2", "smape"]
-        flags={"mae_drift":False, "rmse_drift":False, "r2_drift":False, "smape_drift":False}
+        performance_flags={"mae_drift":False, "rmse_drift":False, "r2_drift":False, "smape_drift":False}
         
         for metric in metric_names:
             
             if rolling_metrics[metric] > training_metrics[metric] * threshold:
                 
                 print(f" current {metric}:{rolling_metrics[metric]} vs baseline {metric}:{training_metrics[metric]}")
-                #check what to print
-                #add retraining triggers
-                print("retrain /fix model")
-                flags[metric]=True
+                performance_flags[metric]=True
             
             else:
                 
@@ -193,7 +190,7 @@ class MetricsMonitor:
                 #check what to print
                 print("model still usable")
         
-        return flags
+        return performance_flags
 
 
         
