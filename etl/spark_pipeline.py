@@ -4,7 +4,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 
 from pyspark.sql import SparkSession       
-from pyspark.sql import Functions as f
+from pyspark.sql import functions as f
 from pyspark.sql.types import(
     StructType,StructField,IntegerType,FloatType,TimestampType,stringType
 )
@@ -27,7 +27,7 @@ from config.settings import(
 def create_spark_session()->SparkSession:
     spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
            .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
-           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS)
            .config("spark.sql.adaptive.enabled","true")
            .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
         .getOrCreate())

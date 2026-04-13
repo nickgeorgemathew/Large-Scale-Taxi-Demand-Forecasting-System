@@ -1,12 +1,9 @@
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql import Functions as f
-from pyspark.sql.types import(
-    StructType,StructField,IntegerType,FloatType,TimestampType,stringType
-)
+from pyspark.sql import functions as f
+
 from monitoring.prediction_logger import prediction_logger
-from scipy.stats import p
 from config.settings import LOG
 from pathlib import Path
 from datetime import datetime,timedelta
@@ -26,7 +23,7 @@ SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY)
 def create_spark_session()->SparkSession:
     spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
            .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
-           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS)
            .config("spark.sql.adaptive.enabled","true")
            .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
         .getOrCreate())
@@ -67,7 +64,7 @@ class DriftDetector:
     def load_dataframe(self,file_path):
        
         df=self.spark.read.parquet(file_path)
-        df=df.pandas_api()
+        df=df.to_pandas()
         return df
     
     
@@ -79,9 +76,9 @@ class DriftDetector:
             psi=calculate_psi(training[feature],current[feature])
             
             if psi > threshold:
-                result.update(f"{feature}_drift",True)
-            
-            result.update(f"{feature}_drift",False)
+                result.update({f"{feature}_drift":True})
+            else:
+                result.update({f"{feature}_drift":False})
         
         return result
 
@@ -94,16 +91,24 @@ class DriftDetector:
         residual=df["actual"]- df["prediction"]
         mean_residual=np.mean(residual)
         std_residual=np.std(residual)
-
-        if np.abs(mean_residual) > threshold:
-            result={"residual_drift":True}
         
-        result={"residual_drift":False}
+        result={"residual_drift":bool(np.abs(mean_residual)>threshold)}
 
         return result
 
 
         
     
-    def detect_drift(self):
-        pass
+    def detect_drift(self,feature_drift,residual_drift):
+        
+        feature =[k if val is True else None for k,val in feature_drift ]
+        residual=[k if val is True else None for k,val in feature_drift ]
+
+        if feature or residual :
+            print("drift detected !!")
+            return feature_drift,residual_drift
+        else:
+            print("No drift detected")
+
+
+        

@@ -4,7 +4,7 @@ from monitoring.prediction_logger import prediction_logger
 from config.settings import LOG
 from pathlib import Path
 from pyspark.sql import SparkSession
-from pyspark.sql import Functions as f
+from pyspark.sql import functions as f
 import pyspark.pandas as ps
 from datetime import datetime,timedelta
 from models.evaluate import Evaluate

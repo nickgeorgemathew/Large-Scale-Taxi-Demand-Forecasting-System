@@ -4,7 +4,7 @@ import numpy as np
 from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from pyspark.sql import SparkSession
-from pyspark.sql import Functions as f
+from pyspark.sql import functions as f
 import pyspark.pandas as ps
 import json
 import optuna
@@ -32,7 +32,7 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 def create_spark_session()->SparkSession:
     spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]")
            .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
-           .config("spark.sql.shuffle.partition",SPARK_SHUFFLE_PARTITIONS)
+           .config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS)
            .config("spark.sql.adaptive.enabled","true")
            .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
         .getOrCreate())
