@@ -110,7 +110,15 @@ class DriftDetector:
         if feature or residual :
             print("drift detected !!")
             drift_flag={"feature_drift":bool(len(feature)>0),"residual_drift":bool(len(residual)>0)}
-            return drift_flag
+            
+            if len(feature)>0:
+                
+                drift_flag.update({"features":feature})
+                return drift_flag               
+            
+            else:
+                return drift_flag
+        
         else:
             print("No drift detected")
             drift_flag={"feature_drift":False,"residual_drift": False}
