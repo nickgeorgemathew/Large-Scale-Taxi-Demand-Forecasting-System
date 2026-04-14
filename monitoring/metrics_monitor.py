@@ -41,10 +41,9 @@ class MetricsMonitor:
     def save_metrics_parquet(self,metrics,label,filename):
         df_metrics=pd.DataFrame(metrics)        
         # Load, Combine, and Overwrite
-        df_existing = pd.read_parquet(self.metric_path[filename])
+        try:    
+            df_existing = pd.read_parquet(self.metric_path[filename])
 
-
-        if df_existing:
             # perform a 'merge' with an 'indicator' to see which rows are new
             check_merge = pd.merge(
                 df_metrics, 
@@ -63,7 +62,7 @@ class MetricsMonitor:
                 df_combined = pd.concat([df_existing, df_metrics], ignore_index=True)
                 df_combined.to_parquet(self.log_path, engine='pyarrow')
 
-        else:
+        except FileNotFoundError:
 
             df_metrics.to_parquet(self.log_path,engine="pyarrow") 
 
