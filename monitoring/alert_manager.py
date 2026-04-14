@@ -59,7 +59,7 @@ class AlertManager:
     def asses_drift(self,drift_flags):
         """ assess the feature and residual drift flags"""
         feature=[k for k,val in drift_flags.items() if val and k !="residual_drift"]
-        residual=[k for k,val in drift_flags.items() if val and k ="residual_drift"]
+        residual=[k for k,val in drift_flags.items() if val and k =="residual_drift"]
         return feature,residual
         
     
