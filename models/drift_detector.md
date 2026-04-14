@@ -109,7 +109,7 @@ drift_detector
         ↓
 alert_manager
         ↓
-retrain_pipeline
+model_ops_pipeline/retrain_rollback_pipeline
 ```
 
 `alert_manager` sits **between monitoring and action**.

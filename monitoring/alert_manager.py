@@ -6,6 +6,7 @@ from metrics_monitor import MetricsMonitor
 from models.evaluate import Evaluate
 import json
 import numpy as np
+from retraining import retrain_pipeline
 from config.settings import METRICLOG,LOG,PERFORMANCELOG
 from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,MONITORED_FEATURES,
@@ -32,10 +33,16 @@ def save_log_parquet(log,file_path):
 
 
 class AlertManager:
+    
 
     def __init__(self):
         pass
+        
 
+    
+    
+    
+    
     def log_state(self,flag,file_path):
         """ log the issue and severity with what action was taken with timestamp"""
         current_time=datetime.now()
