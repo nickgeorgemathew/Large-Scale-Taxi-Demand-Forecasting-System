@@ -7,6 +7,13 @@ from datetime import datetime,timedelta
 from schema import HourlyForecast
 import joblib
 import json
+from config.settings import (
+    PROCESSED_PATH, FEATURES_PATH,
+    LAG_HOURS, ROLLING_WINDOWS,
+    PUBLIC_HOLIDAYS_2022,
+    TRAIN_END_DATE, VAL_END_DATE,
+    TARGET_COLUMN, FEATURE_COLUMNS
+)
 
 
 class TaxiForecaster:
@@ -21,7 +28,7 @@ class TaxiForecaster:
     
     def predict(self,zone_id, hours_ahead):
       results = []
-      history_buffer = self.recent_history_df[zone_id].copy()
+      history_buffer = self.recent_history_df[self.recent_history_df["zone_id"] == zone_id].copy()
       
       current_hour = pd.Timestamp.now().floor('h')
       
@@ -29,7 +36,7 @@ class TaxiForecaster:
         target_time = current_hour + timedelta(hours=step)
         
         # build one row of features for this (zone, time) pair
-        features = build_feature_row(zone_id, target_time, history_buffer)
+        features = self.build_feature_row(zone_id, target_time, history_buffer)
         
         pred = self.model.predict(features)[0]
         pred = np.clip(pred,0)  
@@ -46,7 +53,7 @@ class TaxiForecaster:
         
         # RECURSIVE FORECASTING: add this prediction to buffer
         # so next step's lag_1h uses it
-        history_buffer.append({
+        history_buffer=history_buffer.append({
           'hour_timestamp': target_time,
           'demand': pred
         })
@@ -54,18 +61,30 @@ class TaxiForecaster:
       return results
     
         
-    def build_feature_row(zone_id, timestamp, history_buffer):
+    def build_feature_row(self,zone_id, timestamp, history_buffer):
         row = {}
+        timestamp=pd.to_datetime(timestamp)
         row['hour_of_day'] = timestamp.hour
         row['day_of_week'] = timestamp.weekday()
         row['is_weekend'] = row['day_of_week'] >= 5
         row['zone_id'] = zone_id
+        row["month"]=timestamp.month
+        row["is_weekend"]=(row["day_of_week"]>=5).astype(int)
+        row["is_rush_am"]=int(row["hour_of_day"]>=7 and row["hour_of_day"]<=9)
+        row["is_rush_pm"]=int(row["hour_of_day"]>=17 and row["hour_of_day"]<=19)
+        row["is_night"]=int( (row["hour_of_day"] >= 22) or (row["hour_of_day"] <= 5)
+        )
+
+        holidays=pd.to_datetime(PUBLIC_HOLIDAYS_2022)
+        row["is_holiday"]=timestamp.date.astype(["datetime64[ns]"]).isin(
+            holidays
+        ).astype(int)
         # ...other temporal features
         
         # lags: pull from history_buffer
         for lag in [1, 2, 3, 6, 24, 48, 168]:
             lookup_time = timestamp - timedelta(hours=lag)
-            row[f'lag_{lag}h'] = history_buffer.get(lookup_time, 0)
+            row[f'lag_{lag}h'] = history_buffer[history_buffer["timestamp"]==lookup_time]
         
         # rolling: compute from history_buffer
         last_6 = [history_buffer.get(timestamp - timedelta(hours=i), 0) for i in range(1,7)]
