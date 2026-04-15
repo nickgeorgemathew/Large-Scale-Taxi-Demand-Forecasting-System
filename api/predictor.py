@@ -1,23 +1,29 @@
 import pandas as pd
+import numpy as np
 from pyspark.sql import SparkSession
-from pyspark.sql import Functions as f
+from pyspark.sql import functions as f
 import pyspark.pandas as ps
+from datetime import datetime,timedelta
+from schema import HourlyForecast
+import joblib
 import json
 
 
 class TaxiForecaster:
     
-    def __init__(self,model_path):
-      load model from artifacts/lgbm_demand_v1.pkl
-      load feature_cols from artifacts/feature_cols.json
-      load recent_history_df from processed data  ← needed to build lag features
-      load zone_metadata_df
+    def __init__(self,model_path,feature_path,recent_history_path):
+      self.model=joblib.load(model_path)
+
+      with open(feature_path,"r") as F:
+        self.feature_cols=json.load(F)
+      self.recent_history_df=ps.read_csv(recent_history_path)#load recent_history_df from processed data  ← needed to build lag features
+      # load zone_metadata_df
     
-    def predict(zone_id, hours_ahead):
+    def predict(self,zone_id, hours_ahead):
       results = []
-      history_buffer = recent_history_df[zone_id].copy()
+      history_buffer = self.recent_history_df[zone_id].copy()
       
-      current_hour = datetime.now().floor('H')
+      current_hour = pd.Timestamp.now().floor('h')
       
       for step in range(1, hours_ahead + 1):
         target_time = current_hour + timedelta(hours=step)
@@ -25,8 +31,8 @@ class TaxiForecaster:
         # build one row of features for this (zone, time) pair
         features = build_feature_row(zone_id, target_time, history_buffer)
         
-        pred = model.predict(features)[0]
-        pred = max(0, pred)   ← clip negative
+        pred = self.model.predict(features)[0]
+        pred = np.clip(pred,0)  
         
         pred_low  = quantile_low_model.predict(features)[0]
         pred_high = quantile_high_model.predict(features)[0]
@@ -63,7 +69,6 @@ class TaxiForecaster:
         
         # rolling: compute from history_buffer
         last_6 = [history_buffer.get(timestamp - timedelta(hours=i), 0) for i in range(1,7)]
-        row['roll_mean_6h'] = mean(last_6)
+        row['roll_mean_6h'] = np.mean(last_6)
         
-        return pd.DataFrame([row])[feature_cols]
-```
+        return pd.DataFrame([row])[self.feature_cols]
