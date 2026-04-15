@@ -51,10 +51,10 @@ class TaxiForecaster:
           'demand': pred
         })
       
-        return results
+      return results
     
         
-      def build_feature_row(zone_id, timestamp, history_buffer):
+    def build_feature_row(zone_id, timestamp, history_buffer):
         row = {}
         row['hour_of_day'] = timestamp.hour
         row['day_of_week'] = timestamp.weekday()
