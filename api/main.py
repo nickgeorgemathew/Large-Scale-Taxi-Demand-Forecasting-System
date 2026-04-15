@@ -1,3 +1,8 @@
+from fastapi import Fastapi,httpexception
+
+
+
+
 app = FastAPI(title="NYC Taxi Demand Forecast API")
   forecaster = TaxiForecaster()   ← loaded once at startup, not per request
   

@@ -82,10 +82,16 @@ class ModelTrainer:
         train_max=self.train.select(f.max("hour_timestamp")).collect()[0][0]
         val_min=self.val.select(f.min("hour_timestamp")).collect()[0][0]
         val_max=self.val.select(f.max("hour_timestamp")).collect()[0][0]
-        test_min=self.val.select(f.min("hour_timestamp")).collect()[0][0]
+        test_min=self.test.select(f.min("hour_timestamp")).collect()[0][0]
 
         assert train_max < val_min
         assert val_max < test_min
+
+        # Convert to Pandas for LightGBM compatibility
+        print("Converting Spark DataFrames to Pandas for LightGBM...")
+        self.train_pd = self.train.toPandas()
+        self.val_pd = self.val.toPandas()
+        self.test_pd = self.test.toPandas()
 
         print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
         
@@ -97,6 +103,11 @@ class ModelTrainer:
    
    
     def tune_hyperparameters(self, n_trials=50):
+        # Extract features and targets using the Pandas DataFrames
+        X_train = self.train_pd[FEATURE_COLUMNS]
+        y_train = self.train_pd[TARGET_COLUMN]
+        X_val = self.val_pd[FEATURE_COLUMNS]
+        y_val = self.val_pd[TARGET_COLUMN]
         def objective(trial):
             params = {
                 'n_estimators': 2000,
@@ -111,13 +122,13 @@ class ModelTrainer:
             
             model = LGBMRegressor(**params, random_state=42, verbose=-1)
             model.fit(
-                self.X_train, self.y_train,
-                eval_set=[(self.X_val, self.y_val)],
+                X_train, y_train,
+                eval_set=[(X_val, y_val)],
                 callbacks=[early_stopping(100, verbose=False)]
             )
             
-            y_pred = model.predict(self.X_val)
-            rmse = np.sqrt(mean_squared_error(self.y_val, y_pred))
+            y_pred = model.predict(X_val)
+            rmse = np.sqrt(mean_squared_error(y_val, y_pred))
             return rmse
         
         study = optuna.create_study(direction='minimize')
@@ -134,10 +145,10 @@ class ModelTrainer:
         start=time.perf_counter()
         
 
-        X_train=self.train[FEATURE_COLUMNS]
-        y_train=self.train[TARGET_COLUMN]
-        X_val=self.val[FEATURE_COLUMNS]
-        y_val=self.val[TARGET_COLUMN]
+        X_train = self.train_pd[FEATURE_COLUMNS]
+        y_train = self.train_pd[TARGET_COLUMN]
+        X_val = self.val_pd[FEATURE_COLUMNS]
+        y_val = self.val_pd[TARGET_COLUMN]
 
 
         self.model=LGBMRegressor(
@@ -168,9 +179,9 @@ class ModelTrainer:
     
     
     
-    def save_best_model(self):
-         
-        model_path = MODEL_DIR / "lgbm_demand_v1.pkl"
+    def save_best_model(self,version):
+        self.version=version
+        model_path = MODEL_DIR / f"lgbm_demand_v{self.version}.pkl"
         joblib.dump(self.model, model_path)
             
         with open(MODEL_DIR/"feature_cols.json",'w') as f:
@@ -185,7 +196,7 @@ class ModelTrainer:
     def analyze_feature_importance(self, top_n=20):
         """Show which features matter most."""
         importance_df = pd.DataFrame({
-            'feature': self.feature_cols,
+            'feature': FEATURE_COLUMNS,
             'importance': self.model.feature_importances_
         }).sort_values('importance', ascending=False)
         
@@ -203,7 +214,7 @@ class ModelTrainer:
         plt.title('Feature Importance')
         plt.gca().invert_yaxis()
         plt.tight_layout()
-        plt.savefig(MODEL_DIR / 'feature_importance.png', dpi=150)
+        plt.savefig(MODEL_DIR / f'feature_importance_{self.version}.png', dpi=150)
         plt.close()
         
         return importance_df
@@ -224,7 +235,8 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 1: SPLITTING DATA")
         print("="*60)
-        self.split_data(PROCESSED_PATH)
+        df=self.load_data(PROCESSED_PATH)
+        train,val,test=self.split_data(df)
         
         # 2. Baseline
         print("\n" + "="*60)

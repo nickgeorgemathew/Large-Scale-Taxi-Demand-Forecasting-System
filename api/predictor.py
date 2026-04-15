@@ -1,12 +1,19 @@
+import pandas as pd
+from pyspark.sql import SparkSession
+from pyspark.sql import Functions as f
+import pyspark.pandas as ps
+import json
+
+
 class TaxiForecaster:
     
-    __init__:
+    def __init__(self,model_path):
       load model from artifacts/lgbm_demand_v1.pkl
       load feature_cols from artifacts/feature_cols.json
       load recent_history_df from processed data  ← needed to build lag features
       load zone_metadata_df
     
-    predict(zone_id, hours_ahead):
+    def predict(zone_id, hours_ahead):
       results = []
       history_buffer = recent_history_df[zone_id].copy()
       
@@ -38,24 +45,25 @@ class TaxiForecaster:
           'demand': pred
         })
       
-      return results
+        return results
     
-    build_feature_row(zone_id, timestamp, history_buffer):
-      row = {}
-      row['hour_of_day'] = timestamp.hour
-      row['day_of_week'] = timestamp.weekday()
-      row['is_weekend'] = row['day_of_week'] >= 5
-      row['zone_id'] = zone_id
-      # ...other temporal features
-      
-      # lags: pull from history_buffer
-      for lag in [1, 2, 3, 6, 24, 48, 168]:
-        lookup_time = timestamp - timedelta(hours=lag)
-        row[f'lag_{lag}h'] = history_buffer.get(lookup_time, 0)
-      
-      # rolling: compute from history_buffer
-      last_6 = [history_buffer.get(timestamp - timedelta(hours=i), 0) for i in range(1,7)]
-      row['roll_mean_6h'] = mean(last_6)
-      
-      return pd.DataFrame([row])[feature_cols]
+        
+      def build_feature_row(zone_id, timestamp, history_buffer):
+        row = {}
+        row['hour_of_day'] = timestamp.hour
+        row['day_of_week'] = timestamp.weekday()
+        row['is_weekend'] = row['day_of_week'] >= 5
+        row['zone_id'] = zone_id
+        # ...other temporal features
+        
+        # lags: pull from history_buffer
+        for lag in [1, 2, 3, 6, 24, 48, 168]:
+            lookup_time = timestamp - timedelta(hours=lag)
+            row[f'lag_{lag}h'] = history_buffer.get(lookup_time, 0)
+        
+        # rolling: compute from history_buffer
+        last_6 = [history_buffer.get(timestamp - timedelta(hours=i), 0) for i in range(1,7)]
+        row['roll_mean_6h'] = mean(last_6)
+        
+        return pd.DataFrame([row])[feature_cols]
 ```
