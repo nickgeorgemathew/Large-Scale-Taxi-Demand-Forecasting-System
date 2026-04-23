@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from monitoring import prediction_logger
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
 import pyspark.pandas as ps
@@ -8,7 +9,7 @@ from schema import HourlyForecast
 import joblib
 import json
 from config.settings import (
-    PROCESSED_PATH, FEATURES_PATH,
+    PROCESSED_PATH, FEATURES_PATH,LOG,
     LAG_HOURS, ROLLING_WINDOWS,
     PUBLIC_HOLIDAYS_2022,
     TRAIN_END_DATE, VAL_END_DATE,
@@ -19,17 +20,21 @@ from config.settings import (
 class TaxiForecaster:
     
     def __init__(self,model_path,feature_path,recent_history_path):
+      """ensure recent history (prediction logs) is created"""
       self.model=joblib.load(model_path)
+      self.logger=prediction_logger.prediction_logger()
 
       with open(feature_path,"r") as F:
         self.feature_cols=json.load(F)
-      self.recent_history_df=ps.read_csv(recent_history_path)#load recent_history_df from processed data  ← needed to build lag features
+      self.recent_history_df=ps.read_csv(recent_history_path)#load recent_history_df(logs that were saved) from processed data  ← needed to build lag features
+      self.recent_history_df=self.recent_history_df.to_pandas()
       # load zone_metadata_df
     
     def predict(self,zone_id, hours_ahead):
-      """predict future demand.pass zone_id and how many hours ahead prediction should be done"""
+      """predict future demand, pass zone_id and how many hours ahead prediction should be done"""
       results = []
       history_buffer = self.recent_history_df[self.recent_history_df["zone_id"] == zone_id].copy()
+      history_buffer=history_buffer[["timestamp","zone_id","predicted_demand"]].tail(200)
       
       current_hour = pd.Timestamp.now().floor('h')
       
@@ -37,9 +42,9 @@ class TaxiForecaster:
         target_time = current_hour + timedelta(hours=step)
         
         # build one row of features for this (zone, time) pair
-        features = self.build_feature_row(zone_id, target_time, history_buffer)
+        features_df,features = self.build_feature_row(zone_id, target_time, history_buffer)
         
-        pred = self.model.predict(features)[0]
+        pred = self.model.predict(features_df)[0]
         pred = np.clip(pred,0)  
         
         pred_low  = quantile_low_model.predict(features)[0]
@@ -47,17 +52,25 @@ class TaxiForecaster:
         
         results.append(HourlyForecast(
           timestamp=target_time,
+          zone_id=zone_id,
           predicted_demand=pred,
           lower_bound=pred_low,
-          upper_bound=pred_high
+          upper_bound=pred_high,
+          features=features
         ))
         
         # RECURSIVE FORECASTING: add this prediction to buffer
         # so next step's lag_1h uses it
-        history_buffer=history_buffer.append({
-          'timestamp': target_time,
-          'demand': pred
-        })
+        curr={
+          "timestamp":target_time,
+          "zone_id":zone_id,
+          "predicted_demand":pred,
+          
+        }
+        curr_df=pd.DataFrame(curr)
+        history_buffer=pd.concat( [history_buffer, curr_df], ignore_index=True)
+      # log prediction
+      self.logger.save_logs_parquet(results,LOG)
       
       return results
     
@@ -66,12 +79,12 @@ class TaxiForecaster:
         row = {}
         history_buffer=history_buffer.copy()
         timestamp=pd.to_datetime(timestamp).floor('h')
-        history_buffer['timestamp']=pd.to_datetime(history_buffer["timestamp"]).floor('h')
+        history_buffer['timestamp']=pd.to_datetime(history_buffer["timestamp"]).dt.floor('h')
         row['hour_of_day'] = timestamp.hour
         row['day_of_week'] = timestamp.weekday()
         row['zone_id'] = zone_id
         row["month"]=timestamp.month
-        row["is_weekend"]=(row["day_of_week"]>=5).astype(int)
+        row["is_weekend"]=int(row["day_of_week"]>=5)
         row["is_rush_am"]=int(row["hour_of_day"]>=7 and row["hour_of_day"]<=9)
         row["is_rush_pm"]=int(row["hour_of_day"]>=17 and row["hour_of_day"]<=19)
         row["is_night"]=int( (row["hour_of_day"] >= 22) or (row["hour_of_day"] <= 5)
@@ -86,11 +99,11 @@ class TaxiForecaster:
 
         for lag in lag_list:
 
-            lookup_time = timestamp - timedelta(hours=lag)
+            lookup_time = (timestamp - timedelta(hours=lag)).floor('h')
 
             match = history_buffer.loc[
                 history_buffer["timestamp"] == lookup_time,
-                "demand"
+                "predicted_demand"
             ]
 
             if len(match) > 0:
@@ -103,11 +116,11 @@ class TaxiForecaster:
 
         for i in range(1, 7):
 
-            lookup_time = timestamp - timedelta(hours=i)
+            lookup_time = (timestamp - timedelta(hours=i)).floor('h')
 
             match = history_buffer.loc[
                 history_buffer["timestamp"] == lookup_time,
-                "demand"
+                "predicted_demand"
             ]
 
             if len(match) > 0:
@@ -118,4 +131,4 @@ class TaxiForecaster:
         row_df = pd.DataFrame([row])
         row_df = row_df.reindex(columns=self.feature_cols, fill_value=0)
 
-        return row_df
+        return row_df,row

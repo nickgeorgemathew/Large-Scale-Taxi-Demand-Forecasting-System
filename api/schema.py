@@ -9,9 +9,11 @@ class ForecastRequest(BaseModel):
   
 class HourlyForecast(BaseModel):
     timestamp: datetime
+    zone_id:int
     predicted_demand: float
     lower_bound: float
     upper_bound: float
+    features:dict
   
 class ForecastResponse(BaseModel):
     zone_id: int

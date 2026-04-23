@@ -6,14 +6,13 @@ from config.settings import LOG
 
 class prediction_logger:
     def __init__(self):
-        self.log_path=Path(LOG)
-        
         pass
 
-    def save_logs_parquet(self,logs):
-        df_logs=pd.DataFrame(logs)        
+    def save_logs_parquet(self,logs,path):
+        df_logs=pd.DataFrame(logs) 
+        path=Path(path)       
         # Load, Combine, and Overwrite
-        df_existing = pd.read_parquet(self.log_path)
+        df_existing = pd.read_parquet(path)
 
 
         if df_existing:
@@ -43,7 +42,7 @@ class prediction_logger:
     
 
 
-    def log_predictions(self,features:dict,prediction,actual,model_version):
+    def log_predictions(self,features:dict,prediction,actual,model_version,path):
         
         #add features that are being used for prediction and monitioring
         timestamp=pd.to_datetime(features["timestamp"])
@@ -59,7 +58,7 @@ class prediction_logger:
             "prediction":prediction,
             "actual":actual if actual else None
         }
-        self.save_logs_parquet(log_dict)
+        self.save_logs_parquet(log_dict,path)
         
 
         
