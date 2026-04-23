@@ -19,9 +19,12 @@ from config.settings import (
 
 class TaxiForecaster:
     
-    def __init__(self,model_path,feature_path,recent_history_path):
+    def __init__(self,model_path,feature_path,recent_history_path,quantile_low_model_path,quantile_high_model_path):
       """ensure recent history (prediction logs) is created"""
+      
       self.model=joblib.load(model_path)
+      self.quantile_low_model=joblib.load(quantile_low_model_path)
+      self.quantile_high_model=joblib.load(quantile_high_model_path)
       self.logger=prediction_logger.prediction_logger()
 
       with open(feature_path,"r") as F:
@@ -47,8 +50,8 @@ class TaxiForecaster:
         pred = self.model.predict(features_df)[0]
         pred = np.clip(pred,0)  
         
-        pred_low  = quantile_low_model.predict(features)[0]
-        pred_high = quantile_high_model.predict(features)[0]
+        pred_low  = self.quantile_low_model.predict(features)[0]
+        pred_high = self.quantile_high_model.predict(features)[0]
         
         results.append(HourlyForecast(
           timestamp=target_time,

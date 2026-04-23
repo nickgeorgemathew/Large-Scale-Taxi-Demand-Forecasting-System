@@ -7,6 +7,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
 import pyspark.pandas as ps
 import json
+import matplotlib.pyplot as plt
 import optuna
 from pathlib import Path
 import numpy as np
@@ -169,7 +170,74 @@ class ModelTrainer:
 
         
         return self.model
+    
 
+
+    def train_quantile_low_model(self):
+        start=time.perf_counter()
+        
+
+        X_train = self.train_pd[FEATURE_COLUMNS]
+        y_train = self.train_pd[TARGET_COLUMN]
+        X_val = self.val_pd[FEATURE_COLUMNS]
+        y_val = self.val_pd[TARGET_COLUMN]
+
+
+        self.quantile_low_model=LGBMRegressor(
+            **self.best_model,objective ="quantile",alpha = 0.1
+        )
+        print("="*60)
+        print("fitting the model")
+        print("="*60)
+
+        self.model.fit(X_train,y_train,
+                       eval_set=[(X_val, y_val)],
+        
+        callbacks=[early_stopping(100), log_evaluation(100)]
+        )
+        
+        end=(time.perf_counter()-start)*1000
+        print(f"model fit in time :{end}")
+
+        model_path = MODEL_DIR / f"quantile_low_model_v{self.version}.pkl"
+        joblib.dump(self.quantile_low_model, model_path)
+        
+        return self.quantile_low_model
+
+
+
+
+    def train_quantile_high_model(self):
+        start=time.perf_counter()
+        
+
+        X_train = self.train_pd[FEATURE_COLUMNS]
+        y_train = self.train_pd[TARGET_COLUMN]
+        X_val = self.val_pd[FEATURE_COLUMNS]
+        y_val = self.val_pd[TARGET_COLUMN]
+
+
+        self.quantile_high_model=LGBMRegressor(
+            **self.best_model,objective ="quantile",alpha = 0.9
+        )
+        print("="*60)
+        print("fitting the model")
+        print("="*60)
+
+        self.model.fit(X_train,y_train,
+                       eval_set=[(X_val, y_val)],
+        
+        callbacks=[early_stopping(100), log_evaluation(100)]
+        )
+        
+        end=(time.perf_counter()-start)*1000
+        print(f"model fit in time :{end}")
+
+        model_path = MODEL_DIR / f"quantile_high_model_v{self.version}.pkl"
+        joblib.dump(self.quantile_high_model, model_path)
+
+        
+        return self.quantile_high_model
 
 
     
@@ -206,7 +274,7 @@ class ModelTrainer:
         print(importance_df.head(top_n).to_string(index=False))
         
         # Plot
-        import matplotlib.pyplot as plt
+        
         plt.figure(figsize=(10, 8))
         plt.barh(importance_df['feature'].head(top_n), 
                 importance_df['importance'].head(top_n))
@@ -259,6 +327,8 @@ class ModelTrainer:
         print("  STEP 4: TRAINING LIGHTGBM")
         print("="*60)
         self.train_model()
+        self.train_quantile_high_model()
+        self.train_quantile_low_model()
 
         # 5. Evaluate
         print("\n" + "="*60)
