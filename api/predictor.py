@@ -55,7 +55,7 @@ class TaxiForecaster:
         # RECURSIVE FORECASTING: add this prediction to buffer
         # so next step's lag_1h uses it
         history_buffer=history_buffer.append({
-          'hour_timestamp': target_time,
+          'timestamp': target_time,
           'demand': pred
         })
       
@@ -64,7 +64,9 @@ class TaxiForecaster:
         
     def build_feature_row(self,zone_id, timestamp, history_buffer):
         row = {}
-        timestamp=pd.to_datetime(timestamp)
+        history_buffer=history_buffer.copy()
+        timestamp=pd.to_datetime(timestamp).floor('h')
+        history_buffer['timestamp']=pd.to_datetime(history_buffer["timestamp"]).floor('h')
         row['hour_of_day'] = timestamp.hour
         row['day_of_week'] = timestamp.weekday()
         row['zone_id'] = zone_id
@@ -80,12 +82,40 @@ class TaxiForecaster:
         # ...other temporal features
         
         # lags: pull from history_buffer
-        for lag in [1, 2, 3, 6, 24, 48, 168]:
+        lag_list = [1, 2, 3, 6, 24, 48, 168]
+
+        for lag in lag_list:
+
             lookup_time = timestamp - timedelta(hours=lag)
-            row[f'lag_{lag}h'] = history_buffer[history_buffer["timestamp"]==lookup_time]
+
+            match = history_buffer.loc[
+                history_buffer["timestamp"] == lookup_time,
+                "demand"
+            ]
+
+            if len(match) > 0:
+                row[f"lag_{lag}h"] = float(match.iloc[-1])
+            else:
+                row[f"lag_{lag}h"] = 0.0
         
         # rolling: compute from history_buffer
-        last_6 = [history_buffer['hour_timestamp'== timestamp - timedelta(hours=i), 0] for i in range(1,7)]
-        row['roll_mean_6h'] = np.mean(last_6)
+        values = []
+
+        for i in range(1, 7):
+
+            lookup_time = timestamp - timedelta(hours=i)
+
+            match = history_buffer.loc[
+                history_buffer["timestamp"] == lookup_time,
+                "demand"
+            ]
+
+            if len(match) > 0:
+                values.append(float(match.iloc[-1]))
+
+        row["roll_mean_6h"] = np.mean(values) if values else 0.0
         
-        return pd.DataFrame([row])[self.feature_cols]
+        row_df = pd.DataFrame([row])
+        row_df = row_df.reindex(columns=self.feature_cols, fill_value=0)
+
+        return row_df
