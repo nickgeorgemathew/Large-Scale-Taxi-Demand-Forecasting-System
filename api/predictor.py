@@ -27,6 +27,7 @@ class TaxiForecaster:
       # load zone_metadata_df
     
     def predict(self,zone_id, hours_ahead):
+      """predict future demand.pass zone_id and how many hours ahead prediction should be done"""
       results = []
       history_buffer = self.recent_history_df[self.recent_history_df["zone_id"] == zone_id].copy()
       
@@ -66,7 +67,6 @@ class TaxiForecaster:
         timestamp=pd.to_datetime(timestamp)
         row['hour_of_day'] = timestamp.hour
         row['day_of_week'] = timestamp.weekday()
-        row['is_weekend'] = row['day_of_week'] >= 5
         row['zone_id'] = zone_id
         row["month"]=timestamp.month
         row["is_weekend"]=(row["day_of_week"]>=5).astype(int)
@@ -76,9 +76,7 @@ class TaxiForecaster:
         )
 
         holidays=pd.to_datetime(PUBLIC_HOLIDAYS_2022)
-        row["is_holiday"]=timestamp.date.astype(["datetime64[ns]"]).isin(
-            holidays
-        ).astype(int)
+        row["is_holiday"]=int(pd.to_datetime(timestamp.date()) in holidays)
         # ...other temporal features
         
         # lags: pull from history_buffer
@@ -87,7 +85,7 @@ class TaxiForecaster:
             row[f'lag_{lag}h'] = history_buffer[history_buffer["timestamp"]==lookup_time]
         
         # rolling: compute from history_buffer
-        last_6 = [history_buffer.get(timestamp - timedelta(hours=i), 0) for i in range(1,7)]
+        last_6 = [history_buffer['hour_timestamp'== timestamp - timedelta(hours=i), 0] for i in range(1,7)]
         row['roll_mean_6h'] = np.mean(last_6)
         
         return pd.DataFrame([row])[self.feature_cols]
