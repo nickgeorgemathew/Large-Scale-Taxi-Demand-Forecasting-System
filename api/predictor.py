@@ -13,7 +13,7 @@ from config.settings import (
     LAG_HOURS, ROLLING_WINDOWS,
     PUBLIC_HOLIDAYS_2022,
     TRAIN_END_DATE, VAL_END_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS
+    TARGET_COLUMN, FEATURE_COLUMNS,HOTSPOTS
 )
 
 
@@ -74,6 +74,52 @@ class TaxiForecaster:
         history_buffer=pd.concat( [history_buffer, curr_df], ignore_index=True)
       # log prediction
       self.logger.save_logs_parquet(results,LOG)
+      
+      return results
+    
+
+
+    def predict_hotspots(self,zone_id,timestamp):
+      """predict future demand, pass zone_id and how many hours ahead prediction should be done"""
+      results = []
+      history_buffer = self.recent_history_df[self.recent_history_df["zone_id"] == zone_id].copy()
+      history_buffer=history_buffer[["timestamp","zone_id","predicted_demand"]].tail(200)
+      timestamp=pd.to_datetime(timestamp).floor('h')
+      
+      
+      
+      target_time = timestamp + timedelta(hours=1)
+      
+      # build one row of features for this (zone, time) pair
+      features_df,features = self.build_feature_row(zone_id, target_time, history_buffer)
+      
+      pred = self.model.predict(features_df)[0]
+      pred = np.clip(pred,0)  
+      
+      pred_low  = self.quantile_low_model.predict(features)[0]
+      pred_high = self.quantile_high_model.predict(features)[0]
+      
+      results.append(HourlyForecast(
+        timestamp=target_time,
+        zone_id=zone_id,
+        predicted_demand=pred,
+        lower_bound=pred_low,
+        upper_bound=pred_high,
+        features=features
+      ))
+      
+      # RECURSIVE FORECASTING: add this prediction to buffer
+      # so next step's lag_1h uses it
+      curr={
+        "timestamp":target_time,
+        "zone_id":zone_id,
+        "predicted_demand":pred,
+        
+      }
+      curr_df=pd.DataFrame(curr)
+      history_buffer=pd.concat( [history_buffer, curr_df], ignore_index=True)
+      # log prediction
+      self.logger.save_logs_parquet(results,HOTSPOTS)
       
       return results
     

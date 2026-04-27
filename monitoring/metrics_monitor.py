@@ -100,7 +100,7 @@ class MetricsMonitor:
        
         if df_24h.shape()[0] <10:
             
-            return(" not enough predictions in 24 hours metrics too unreliable")
+            return(" not enough predictions in 24 hours, metrics too unreliable")
         else:
             
             metrics_24=self.compute_metrics(df_24h["actual"],df_24h["prediction"],label=f"window_24h_{window_24h}")

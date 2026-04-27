@@ -32,6 +32,8 @@ from config.settings import(
 from config.settings import LOG,#file location for storing parquet logs
 METRICLOG #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
 PERFORMANCELOG# LOG THE PERFORMANCE ISSUES LIKE FEATURE DRIFT,METRIC DEGRADATION ETC WITH TIMESTAMP IN THIS LOCATION 
+MODEL_PATH,QUANTILE_LOW_MODEL_PATH,QUANTILE_HIGH_MODEL_PATH
+HOTSPOTS#file location for storing parquet logs
 # feature_cols = [
         #     'hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday',
         #     'is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded',
