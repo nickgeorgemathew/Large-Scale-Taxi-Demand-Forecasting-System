@@ -4,7 +4,7 @@ from pathlib import Path
 from config.settings import LOG
 
 
-class prediction_logger:
+class PredictionLogger:
     def __init__(self):
         pass
 
@@ -42,7 +42,24 @@ class prediction_logger:
     
 
 
-    def log_predictions(self,features:dict,prediction,actual,model_version,path):
+    def log_predictions(self,features:dict,prediction,model_version,path):
+        
+        #add features that are being used for prediction and monitioring
+        timestamp=pd.to_datetime(features["timestamp"])
+        zone_id=features["zone_id"]
+        
+        
+        #add features and info that need to be logged
+        log_dict={
+            "timestamp":timestamp,
+            "model_version":model_version,
+            "zone_id":zone_id,
+            "prediction":prediction,
+            
+        }
+        self.save_logs_parquet(log_dict,path)
+
+    def log_predictions_actual(self,features:dict,prediction,actual,model_version,path):
         
         #add features that are being used for prediction and monitioring
         timestamp=pd.to_datetime(features["timestamp"])

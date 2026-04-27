@@ -1,14 +1,14 @@
 from fastapi import FastAPI,httpexception,Query
 from predictor import TaxiForecaster
-from config.settings import VALID_ZONE_MIN, VALID_ZONE_MAX,MODEL_PATH,QUANTILE_LOW_MODEL_PATH,RECENT_HISTORY,QUANTILE_HIGH_MODEL_PATH,HOTSPOTS,FEATURES_PATH
+from config.settings import VALID_ZONE_MIN, VALID_ZONE_MAX,MODEL_PATH,QUANTILE_LOW_MODEL_PATH,RECENT_HISTORY,QUANTILE_HIGH_MODEL_PATH,HOTSPOTS,FEATURES_PATH,LOG
 import numpy as np
 import pandas as pd
-from monitoring import prediction_logger
+from monitoring.prediction_logger import PredictionLogger
 
 
 app = FastAPI(title="NYC Taxi Demand Forecast API")
 forecaster = TaxiForecaster(MODEL_PATH,FEATURES_PATH,RECENT_HISTORY,QUANTILE_LOW_MODEL_PATH,QUANTILE_HIGH_MODEL_PATH,)
-logs=prediction_logger()
+logs=PredictionLogger()
 valid_zone=np.arange(VALID_ZONE_MIN,VALID_ZONE_MAX)   
   
 
@@ -25,7 +25,10 @@ def predict(zone_id,hours_ahead:int=Query(24,gt=0)):
 
     
   else:
-    return forecaster.predict(zone_id,hours_ahead)
+    result=forecaster.predict(zone_id,hours_ahead)
+    logs.save_logs_parquet(result,HOTSPOTS)
+    return result.to_dict(orient="records")
+  
   
 
 @app.get('/hotspots/{timestamp}')
@@ -40,6 +43,7 @@ def get_hotspots(timestamp,top_n: int = 20):
         "predicted_demand",
         ascending=False
     )
+    logs.save_logs_parquet(result,HOTSPOTS)
 
     return result.head(top_n).to_dict(orient="records")
 
@@ -48,22 +52,6 @@ def get_hotspots(timestamp,top_n: int = 20):
 @app.get('/health')
 def get_health():
   #get this from the mlops pipeline
-
-
- 
-  GET /forecast/{zone_id}?hours_ahead=24
-    → validate zone_id (1-263)
-    → call forecaster.predict(zone_id, hours_ahead)
-    → return ForecastResponse
-  
-  GET /hotspots?timestamp=2024-01-06T18:00
-    → for all 263 zones, get predicted demand at that timestamp
-    → join with zone lat/lng centroids
-    → return sorted list of top N zones by demand
-    → this is what feeds the map
-  
-  GET /health
-    → return {"status": "ok", "model_version": "v1"}
   
   
   
