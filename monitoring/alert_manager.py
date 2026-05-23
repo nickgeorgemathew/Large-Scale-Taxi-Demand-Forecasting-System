@@ -121,9 +121,10 @@ class AlertManager:
         
         severity = condition_flags["severity"]
         action   = condition_flags["action"]
+        timestamp = datetime.now()
 
         if severity == "CRITICAL":
-            pipeline.halt_serving()          # stop live predictions
+            pipeline.halt_serving(flag=True,reason = severity,timestamp=timestamp)          # stop live predictions
             pipeline.trigger_retrain()       # kick off retraining job
             model_registry.rollback()        # revert to last stable version
             self.model_condition_log(

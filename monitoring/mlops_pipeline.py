@@ -1,25 +1,17 @@
-import
+import json
+import pandas as pd
+from config.settings import SERVING_HALTED
+
+class Pipeline:
+     
 
 
-
-
-halt_serving() :
-    def halt_serving(self):
-    Path("flags/serving_halted.flag").touch()
-    Then in your FastAPI endpoint:
-    python@app.post("/predict")
-    def predict(features):
-        if Path("flags/serving_halted.flag").exists():
-            raise HTTPException(503, "Model serving halted — under maintenance")
-        B — Write to a shared config/state file
-    python# halt_serving writes this
-    {"serving": false, "halted_at": "2024-01-15T10:30:00", "reason": "CRITICAL drift"}
-    FastAPI reads this on every request.
-    C — Call an external process manager (Gunicorn/Uvicorn signal)
-    pythonimport subprocess
-    subprocess.run(["kill", "-SIGTERM", str(uvicorn_pid)])
-    This actually kills the server process. Only use if you have a process manager to restart it.
-    For your project: Option A is correct. It's testable, reversible, and requires no infra.         # stop live predictions
+ def halt_serving(self,flag,reason,timestamp):
+    halted={"serving_halted":flag,"reason":reason,"halted_at":timestamp}
+    
+    with open(SERVING_HALTED,"w")as f:
+         json.dump(halted,f)
+         
 
 
 
@@ -27,7 +19,8 @@ halt_serving() :
 
 
 
-trigger_retrain() :
+
+def trigger_retrain() :
         trigger_retrain()
     This calls RetrainPipeline.run(). The question is: synchronously or asynchronously?
     Synchronous (blocks alert_manager until retrain finishes):
