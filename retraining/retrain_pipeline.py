@@ -6,6 +6,7 @@ import joblib
 import pandas as pd
 from config.settings import PROCESSED_PATH, FEATURE_COLUMNS, TARGET_COLUMN
 from models.train import ModelTrainer
+from pyspark.sql import SparkSession
 from models.evaluate import Evaluate
 from monitoring.model_registry_manager import ModelRegistry
 
@@ -20,7 +21,7 @@ def run_retraining_pipeline():
     try:
         logging.info("Starting retraining pipeline...")
         # 1. Create Spark session and load data
-        from pyspark.sql import SparkSession
+        
         spark = SparkSession.builder.appName("RetrainPipeline").getOrCreate()
         df = spark.read.parquet(PROCESSED_PATH)
 

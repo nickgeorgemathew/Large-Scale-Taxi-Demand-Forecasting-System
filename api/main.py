@@ -40,7 +40,7 @@ def predict(zone_id: int, hours_ahead: int = Query(24, gt=0, le=72)):
     if halted_path.exists():
         with open(halted_path, 'r') as f:
             flag = json.load(f)
-        if flag.get("serving_halted", False):
+        if flag.get("serving_halted", True):
             return {"serving": False, "halted_at": flag.get("halted_at"), "reason": flag.get("reason")}
 
     if zone_id not in valid_zone:
