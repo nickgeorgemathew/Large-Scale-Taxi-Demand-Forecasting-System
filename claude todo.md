@@ -5,7 +5,7 @@ Work top to bottom — each phase only unblocks once the one above it is done, s
 ---
 
 ## Phase 0 — Setup (do once, ~10 min)
-- [ ] `git checkout -b fix/core-pipeline` — keep this off `main` until it actually runs
+- [x ] `git checkout -b fix/core-pipeline` — keep this off `main` until it actually runs
 - [ ] `pip install -r requirements.txt` locally, confirm no install errors
 - [ ] Get a small sample of NYC taxi parquet data locally (a few days, not the full multi-GB set) so you can iterate fast without waiting on Spark jobs
 
