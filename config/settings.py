@@ -1,39 +1,47 @@
-from config.settings import (
-    PROCESSED_PATH, FEATURES_PATH,
-    LAG_HOURS, ROLLING_WINDOWS,
-    TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS
-)
-from config.settings import (
-    PROCESSED_PATH, FEATURES_PATH,MONITORED_FEATURES
-    LAG_HOURS, ROLLING_WINDOWS,
-    PUBLIC_HOLIDAYS_2022,
-    TRAIN_END_DATE, VAL_END_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS
-)
-from config.settings import (
-    PROCESSED_PATH, FEATURES_PATH,
-    LAG_HOURS, ROLLING_WINDOWS,
-    TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS
-)
-from config.settings import(
-    RAW_DATA_PATH, RAW_DATA_FORMAT,
-    PROCESSED_PATH,
-    COLUMN_MAP, REQUIRED_COLUMNS,
-    VALID_ZONE_MIN, VALID_ZONE_MAX,
-    MIN_FARE, MAX_FARE,
-    MIN_DISTANCE, MAX_DISTANCE,
-    MIN_PASSENGER, MAX_PASSENGER,
-    DATA_START_DATE, DATA_END_DATE,
-    TIME_GRANULARITY, FILL_MISSING_ZEROS,
-    SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
-)
-from config.settings import LOG#file location for storing parquet logs
+import os
+from pathlib import Path
+
+
+
+
+PROCESSED_PATH#where the processed nyc data  by etl/spark pipeline is stored
+FEATURES_PATH#path to file that contains the selected features of the dataset used for prediciton and learning
+LAG_HOURS#the list of hours when lag is choosen
+ROLLING_WINDOWS#the hours/time gap of the rolling windows
+TRAIN_END_DATE#date in the dataset which splits the data into training(splitting dataset)
+VAL_END_DATE#date in the dataset which splits the data into validation(splitting dataset)
+TEST_START_DATE#date in the dataset which splits the data into testing(splitting dataset)
+TARGET_COLUMN#which column is the target/one which should be predicted
+FEATURE_COLUMNS#list of column names which are used to train
+MONITORED_FEATURES#features to be monitored to check if any drift or quality drop is happening
+PUBLIC_HOLIDAYS_2022#rewrite as neccessary to the dataset ,to determine rush hours etc,a list of dates
+RAW_DATA_PATH#where the raw nyc taxi data is stored(path)
+RAW_DATA_FORMAT#which format the nyc taxi data raw is stored in
+COLUMN_MAP#standardise column names from raw names:standard names
+REQUIRED_COLUMNS#columns that should be checked to be present to ensure schema validation,it is  a list
+VALID_ZONE_MIN#the min valid zone id
+VALID_ZONE_MAX#the maximum valid zone id
+MIN_FARE, #min fare to prevent outliers
+MAX_FARE,#max fare to prevent outliers
+MIN_DISTANCE,# to prevent outliers
+MAX_DISTANCE,# to prevent outliers
+MIN_PASSENGER, # to prevent outliers
+MAX_PASSENGER,# to prevent outliers
+DATA_START_DATE, #find from dataset
+DATA_END_DATE,#find from dataset
+TIME_GRANULARITY#used in df=df.withColumn("hour_timestamp",f.date_trunc(TIME_GRANULARITY,F.col("pickup_datetime"))),probably the min timestamp??
+FILL_MISSING_ZEROS#true or false flag that tells the spark_pipeine to fill the missing zeros if true and not if false
+SPARK_APP_NAME#name of the spark app when it is initialised
+SPARK_SHUFFLE_PARTITIONS#used here.config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS),find why
+SPARK_DRIVER_MEMORY# used here spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]").config("spark.driver.memory",SPARK_DRIVER_MEMORY) find why
+LOG#file location for storing parquet logs
 METRICLOG #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
 PERFORMANCELOG# LOG THE PERFORMANCE ISSUES LIKE FEATURE DRIFT,METRIC DEGRADATION ETC WITH TIMESTAMP IN THIS LOCATION 
-MODEL_PATH,QUANTILE_LOW_MODEL_PATH,QUANTILE_HIGH_MODEL_PATH
-HOTSPOTS,RECENT_HISTORY#file location for storing parquet logs
+MODEL_PATH#path of where the model is stored
+QUANTILE_LOW_MODEL_PATH#path of where the model is stored
+QUANTILE_HIGH_MODEL_PATH#path of where the model is stored
+HOTSPOTS#file path where to store the hotspots
+RECENT_HISTORY#file location for storing parquet logs
 SERVING_HALTED#location of json file containing flag of whether model is able to predict or not
 
 # feature_cols = [

@@ -5,15 +5,17 @@ Work top to bottom — each phase only unblocks once the one above it is done, s
 ---
 
 ## Phase 0 — Setup (do once, ~10 min)
-- [x ] `git checkout -b fix/core-pipeline` — keep this off `main` until it actually runs
+- [x] `git checkout -b fix/core-pipeline` — keep this off `main` until it actually runs
 - [ ] `pip install -r requirements.txt` locally, confirm no install errors
+- [ ] check if it is possible to add zone_id to the data using longituse and latitude,check other columns,compare with program and make neccessary changes to the data or program which ever is most efficient or faster
 - [ ] Get a small sample of NYC taxi parquet data locally (a few days, not the full multi-GB set) so you can iterate fast without waiting on Spark jobs
+    - [ ] find how to properly split the data and choose so that it is not biased or gives wrong results
 
 ---
 
 ## Phase 1 — `config/settings.py` (THE blocker — nothing else works until this is fixed)
-- [ ] Delete the four self-referential `from config.settings import (...)` blocks at the top (lines 1–31) — this file should **define** these names, not import them from itself
-- [ ] Fix the missing comma bug that's a hard syntax error: `PROCESSED_PATH, FEATURES_PATH,MONITORED_FEATURES` directly followed by `LAG_HOURS` with no comma (around line 8)
+- [x] Delete the four self-referential `from config.settings import (...)` blocks at the top (lines 1–31) — this file should **define** these names, not import them from itself
+- [x] Fix the missing comma bug that's a hard syntax error: `PROCESSED_PATH, FEATURES_PATH,MONITORED_FEATURES` directly followed by `LAG_HOURS` with no comma (around line 8)
 - [ ] Replace the bare dangling names (lines 32–37: `METRICLOG`, `PERFORMANCELOG`, `MODEL_PATH,QUANTILE_LOW_MODEL_PATH...`, `HOTSPOTS,RECENT_HISTORY`, `SERVING_HALTED`) with **actual variable assignments**, e.g. `MODEL_PATH = MODEL_DIR / "lgbm_demand.pkl"`
 - [ ] Cross-reference every name imported anywhere else in the repo (`COLUMN_MAP`, `REQUIRED_COLUMNS`, `VALID_ZONE_MIN/MAX`, `MIN/MAX_FARE`, `MIN/MAX_DISTANCE`, `MIN/MAX_PASSENGER`, `DATA_START/END_DATE`, `TIME_GRANULARITY`, `FILL_MISSING_ZEROS`, `SPARK_*`, `LAG_HOURS`, `ROLLING_WINDOWS`, `PUBLIC_HOLIDAYS_2022`, `TRAIN/VAL_END_DATE`, `TEST_START_DATE`, `TARGET_COLUMN`, `FEATURE_COLUMNS`, `MONITORED_FEATURES`, `RECENT_HISTORY`, `HOTSPOTS`, `LOG`, `METRICLOG`, `PERFORMANCELOG`, `SERVING_HALTED`) and make sure each is actually defined with a real value
 - [ ] **Verify:** `python -c "import config.settings"` runs with zero errors before moving on
@@ -102,6 +104,7 @@ I read `mlops_pipeline.py` (confirmed: it's corrupted with pasted AI-chat prose 
 - [ ] `retraining/model_registry_manager.py`
 - [ ] `retraining/retrain_pipeline.py`
 - [ ] Fully rewrite `monitoring/mlops_pipeline.py` — the current content isn't recoverable, it's prose mixed with broken syntax
+- [ ] compare the project with the resume points,add todo for incomplete points and finish and tidy the project
 
 ---
 

@@ -155,7 +155,7 @@ class TaxiDemandETL:
     def aggregate_demand(self,df):
         print(f"\n[3/5] Aggregating demand by zone and hour...")
         df=df.withColumn("hour_timestamp",
-                        F.date_trunc(TIME_GRANULARITY,F.col("pickup_datetime")))
+                        f.date_trunc(TIME_GRANULARITY,F.col("pickup_datetime")))
 
         demand_df=(
             df.groupby("zone_id","hour_timestamp")
