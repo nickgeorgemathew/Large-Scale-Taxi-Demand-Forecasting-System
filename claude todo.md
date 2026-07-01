@@ -3,7 +3,8 @@ Let me finish auditing the files I haven't fully checked yet, so this TODO is ac
 Work top to bottom — each phase only unblocks once the one above it is done, so you'll always know exactly what to touch next.
 
 ---
-
+COMMAND BEFORE RUNNING ANY FILE TO LAUNCH VIRTUAL ENVIRONMENT 
+PS C:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& c:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System\venv\Scripts\Activate.ps1)
 ## Phase 0 — Setup (do once, ~10 min)
 - [x] `git checkout -b fix/core-pipeline` — keep this off `main` until it actually runs
 - [ ] `pip install -r requirements.txt` locally, confirm no install errors
@@ -11,30 +12,30 @@ Work top to bottom — each phase only unblocks once the one above it is done, s
 - [x] Get a small sample of NYC taxi parquet data locally (a few days, not the full multi-GB set) so you can iterate fast without waiting on Spark jobs
     - [x] find how to properly split the data and choose so that it is not biased or gives wrong results
 - [x] figure out if dataset needs to be cleaned
-- [] add target column demand into the dataset
+- [x] add target column demand into the dataset
 
 ---
 
 ## Phase 1 — `config/settings.py` (THE blocker — nothing else works until this is fixed)
 - [x] Delete the four self-referential `from config.settings import (...)` blocks at the top (lines 1–31) — this file should **define** these names, not import them from itself
 - [x] Fix the missing comma bug that's a hard syntax error: `PROCESSED_PATH, FEATURES_PATH,MONITORED_FEATURES` directly followed by `LAG_HOURS` with no comma (around line 8)
-- [ ] Replace the bare dangling names (lines 32–37: `METRICLOG`, `PERFORMANCELOG`, `MODEL_PATH,QUANTILE_LOW_MODEL_PATH...`, `HOTSPOTS,RECENT_HISTORY`, `SERVING_HALTED`) with **actual variable assignments**, e.g. `MODEL_PATH = MODEL_DIR / "lgbm_demand.pkl"`
-- [ ] Cross-reference every name imported anywhere else in the repo (`COLUMN_MAP`, `REQUIRED_COLUMNS`, `VALID_ZONE_MIN/MAX`, `MIN/MAX_FARE`, `MIN/MAX_DISTANCE`, `MIN/MAX_PASSENGER`, `DATA_START/END_DATE`, `TIME_GRANULARITY`, `FILL_MISSING_ZEROS`, `SPARK_*`, `LAG_HOURS`, `ROLLING_WINDOWS`, `PUBLIC_HOLIDAYS_2022`, `TRAIN/VAL_END_DATE`, `TEST_START_DATE`, `TARGET_COLUMN`, `FEATURE_COLUMNS`, `MONITORED_FEATURES`, `RECENT_HISTORY`, `HOTSPOTS`, `LOG`, `METRICLOG`, `PERFORMANCELOG`, `SERVING_HALTED`) and make sure each is actually defined with a real value
-- [ ] **Verify:** `python -c "import config.settings"` runs with zero errors before moving on
+- [X] Replace the bare dangling names (lines 32–37: `METRICLOG`, `PERFORMANCELOG`, `MODEL_PATH,QUANTILE_LOW_MODEL_PATH...`, `HOTSPOTS,RECENT_HISTORY`, `SERVING_HALTED`) with **actual variable assignments**, e.g. `MODEL_PATH = MODEL_DIR / "lgbm_demand.pkl"`
+- [x] Cross-reference every name imported anywhere else in the repo (`COLUMN_MAP`, `REQUIRED_COLUMNS`, `VALID_ZONE_MIN/MAX`, `MIN/MAX_FARE`, `MIN/MAX_DISTANCE`, `MIN/MAX_PASSENGER`, `DATA_START/END_DATE`, `TIME_GRANULARITY`, `FILL_MISSING_ZEROS`, `SPARK_*`, `LAG_HOURS`, `ROLLING_WINDOWS`, `PUBLIC_HOLIDAYS_2022`, `TRAIN/VAL_END_DATE`, `TEST_START_DATE`, `TARGET_COLUMN`, `FEATURE_COLUMNS`, `MONITORED_FEATURES`, `RECENT_HISTORY`, `HOTSPOTS`, `LOG`, `METRICLOG`, `PERFORMANCELOG`, `SERVING_HALTED`) and make sure each is actually defined with a real value
+- [x] **Verify:** `python -c "import config.settings"` runs with zero errors before moving on
 
 ---
 
 ## Phase 2 — `etl/spark_pipeline.py`
 - [ ] Download TLC taxi zone shapefile → data/raw/taxi_zones/
-- [ ]  Fix COLUMN_MAP to map actual raw column names
+- [x]  Fix COLUMN_MAP to map actual raw column names
 - [ ]  Fix all the bugs from the original Phase 2 list (alias F vs f, far_amount typo, fare_amount <= MAX_DISTANCE wrong column, method name mismatch)
-- [ ]  Fix rename_columns → add_zone_ids → validate_schema → clean order in run()
 - [ ]  Test on your 21-row sample — confirm output parquet has columns zone_id, hour_timestamp, demand with sensible values before running on the real data
-- [ ] Line 9: `stringType` → `StringType` (capitalization)
-- [ ] Line 7 imports `functions as f` (lowercase) but lines 133, 158, 163–167, 171–172 use `F` (uppercase, never imported) — pick one alias and use it everywhere
-- [ ] Line 105: `df.withColumn("far_amount", ...)` → should overwrite `"fare_amount"`, not create a new column `"far_amount"`
-- [ ] Line 123: filter compares `fare_amount <= MAX_DISTANCE` — should be `trip_distance <= MAX_DISTANCE`
-- [ ] Line 258: `self.fill_missing_zeros(df)` called, but method is defined as `filling_missing_zeros` (line 179) — make the call match the definition (rename one or the other)
+- [] do def clean column names verified and logic checked
+- [x] Line 9: `stringType` → `StringType` (capitalization)
+- [x] Line 7 imports `functions as f` (lowercase) but lines 133, 158, 163–167, 171–172 use `F` (uppercase, never imported) — pick one alias and use it everywhere
+- [x] Line 105: `df.withColumn("far_amount", ...)` → should overwrite `"fare_amount"`, not create a new column `"far_amount"`
+- [x] Line 123: filter compares `fare_amount <= MAX_DISTANCE` — should be `trip_distance <= MAX_DISTANCE`
+- [x] Line 258: `self.fill_missing_zeros(df)` called, but method is defined as `filling_missing_zeros` (line 179) — make the call match the definition (rename one or the other)
 - []**For the full multi-GB dataset**, doing `toPandas()` defeats the point of PySpark. Once you have the basic flow working on a sample, the production-grade fix is Apache Sedona (formerly GeoSpark) — a Spark-native spatial library. Add a comment in the code saying this explicitly:
 
 ```python
@@ -46,7 +47,7 @@ Work top to bottom — each phase only unblocks once the one above it is done, s
 ---
 
 ## Phase 3 — `features/engineer.py`
-- [ ] Line 115: `self.zone_stats-(...)` → should be `self.zone_stats=(...)` (assignment, not subtraction)
+- [ ] Line 115: self.zone_stats-(...)` → should be `self.zone_stats=(...)` (assignment, not subtraction)
 - [ ] Line 119 creates column `zone_std_demands` (with trailing "s"), but line 124 reads `zone_std_demand` (no "s") — make the name match in both places
 - [ ] Line 129: `pd.read_csv()` called with **no path argument** — add the actual zone-lookup file path, e.g. `pd.read_csv("data/taxi_zone_lookup.csv")`
 - [ ] Same line: this is wrapped in `except FileNotFoundError`, but a missing-argument call raises `TypeError`, not `FileNotFoundError` — once the path is added this becomes moot, but double check the except clause still makes sense

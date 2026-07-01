@@ -6,7 +6,7 @@ import joblib
 import json
 from schema import HourlyForecast
 from monitoring.prediction_logger import PredictionLogger
-from config.settings import LOG, HOTSPOTS, PUBLIC_HOLIDAYS_2022
+from config.settings import LOG, HOTSPOTS, PUBLIC_HOLIDAYS_2022,FEATURE_COLUMNS
 
 class TaxiForecaster:
 
@@ -15,8 +15,11 @@ class TaxiForecaster:
         self.model = joblib.load(model_path)
         self.quantile_low = joblib.load(quantile_low_model_path)
         self.quantile_high = joblib.load(quantile_high_model_path)
-        with open(feature_path, "r") as f:
-            self.feature_cols = json.load(f)
+        if feature_path:
+            with open(feature_path, "r") as f:
+                self.feature_cols = json.load(f)
+        else:
+            self.feature_cols=FEATURE_COLUMNS
         self.recent_history_df = pd.read_csv(recent_history_path)
         self.recent_history_df['timestamp'] = pd.to_datetime(self.recent_history_df['timestamp'])
         self.logger = PredictionLogger()

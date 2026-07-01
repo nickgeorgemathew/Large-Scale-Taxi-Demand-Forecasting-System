@@ -9,7 +9,7 @@ class MetricsMonitor:
 
     def __init__(self):
         self.evaluator = Evaluate()
-        self.log_path = Path(LOG)
+        self.log_path = LOG
         self.metric_path = Path(METRICLOG).parent  # directory for metrics
 
     def load_logs(self):

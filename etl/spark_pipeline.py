@@ -6,7 +6,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from pyspark.sql import SparkSession       
 from pyspark.sql import functions as f
 from pyspark.sql.types import(
-    StructType,StructField,IntegerType,FloatType,TimestampType,stringType
+    StructType,StructField,IntegerType,FloatType,TimestampType,StringType
 )
 from config.settings import(
     RAW_DATA_PATH, RAW_DATA_FORMAT,
@@ -102,9 +102,11 @@ class TaxiDemandETL:
 
 
         df=df.withColumn("zone_id",f.col("zone_id").cast(IntegerType()))
-        df=df.withColumn("far_amount",f.col("fare_amount").cast(FloatType()))
+        df=df.withColumn("fare_amount",f.col("fare_amount").cast(FloatType()))
         df=df.withColumn("trip_distance",f.col("trip_distance").cast(FloatType()))
         df=df.withColumn("pickup_datetime",f.col("pickup_datetime").cast(TimestampType()))
+        df=df.withColumn("extra",f.col("extra").cast(FloatType()))
+        df=df.withColumn("congestion_surcharge",f.col("congestion_surcharge").cast(FloatType()))
 
 
 
@@ -120,7 +122,7 @@ class TaxiDemandETL:
 
         df=df.filter(
             (f.col("trip_distance")>=MIN_DISTANCE)&
-            (f.col("fare_amount")<=MAX_DISTANCE)
+            (f.col("trip_distance")<=MAX_DISTANCE)
         )
 
 
@@ -130,8 +132,8 @@ class TaxiDemandETL:
             )
 
         df=df.filter(
-            (f.col("pickup_datetime")>=F.lit(DATA_START_DATE))&
-            (f.col("pickup_datetime")<=F.lit(DATA_END_DATE))
+            (f.col("pickup_datetime")>=f.lit(DATA_START_DATE))&
+            (f.col("pickup_datetime")<=f.lit(DATA_END_DATE))
         )
 
 
@@ -155,7 +157,7 @@ class TaxiDemandETL:
     def aggregate_demand(self,df):
         print(f"\n[3/5] Aggregating demand by zone and hour...")
         df=df.withColumn("hour_timestamp",
-                        f.date_trunc(TIME_GRANULARITY,F.col("pickup_datetime")))
+                        f.date_trunc(TIME_GRANULARITY,f.col("pickup_datetime")))
 
         demand_df=(
             df.groupby("zone_id","hour_timestamp")
@@ -168,15 +170,15 @@ class TaxiDemandETL:
             )
         )
         print(f"  → Aggregated to {demand_df.count():,} (zone, hour) records")
-        print(f"  → Date range: {demand_df.agg(F.min('hour_timestamp')).collect()[0][0]} "
-                f"to {demand_df.agg(F.max('hour_timestamp')).collect()[0][0]}")
+        print(f"  → Date range: {demand_df.agg(f.min('hour_timestamp')).collect()[0][0]} "
+                f"to {demand_df.agg(f.max('hour_timestamp')).collect()[0][0]}")
         return demand_df
 
 
 
 
 
-    def filling_missing_zeros(self,df):
+    def fill_missing_zeros(self,df):
         if not FILL_MISSING_ZEROS:
             return df
 
@@ -212,7 +214,7 @@ class TaxiDemandETL:
 
 
 
-    def write(self,df,output_path:str):
+    def write(self,df,output_path):
         print(f"\n[5/5] Writing processed data to: {output_path}")
 
         (
