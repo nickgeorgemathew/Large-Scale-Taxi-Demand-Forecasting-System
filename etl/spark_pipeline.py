@@ -29,12 +29,22 @@ def create_spark_session()->SparkSession:
            .config("spark.driver.memory",SPARK_DRIVER_MEMORY)
            .config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS)
            .config("spark.sql.adaptive.enabled","true")
-           .config("spark.driver.extraJavaOptions", "-Dlog4j.logLevel=WARN")
+           .config(
+        "spark.driver.extraJavaOptions",
+        "--add-opens java.base/javax.security.auth=ALL-UNNAMED "
+        "--add-opens java.base/java.lang=ALL-UNNAMED "
+        "--add-opens java.base/java.lang.reflect=ALL-UNNAMED"
+    )
+    .config(
+        "spark.executor.extraJavaOptions",
+        "--add-opens java.base/javax.security.auth=ALL-UNNAMED "
+        "--add-opens java.base/java.lang=ALL-UNNAMED "
+        "--add-opens java.base/java.lang.reflect=ALL-UNNAMED"
+    )
         .getOrCreate())
     spark.sparkContext.setLogLevel("WARN")
     print(f"SparkSession created | version: {spark.version}")
     return spark
-
 
 
 
@@ -188,8 +198,8 @@ class TaxiDemandETL:
         date_range_df=self.spark.sql(f"""
             SELECT explode(
                     sequence(
-                            timestamp('{DATA_START_DATE}),
-                            timestamp('{DATA_END_DATE}),
+                            timestamp('{DATA_START_DATE}'),
+                            timestamp('{DATA_END_DATE}'),
                             interval 1 hour
                                              )
                         )AS hour_timestamp            
@@ -201,9 +211,7 @@ class TaxiDemandETL:
             full_grid
             .join(df,on=["zone_id", "hour_timestamp"], how="left")
             .fillna({
-                "demand":       0,
-                "avg_fare":     None,
-                "avg_distance": None
+                "demand":       0
             })
         )
         before=df.count()

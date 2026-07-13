@@ -20,7 +20,7 @@ class TaxiForecaster:
                 self.feature_cols = json.load(f)
         else:
             self.feature_cols=FEATURE_COLUMNS
-        self.recent_history_df = pd.read_csv(recent_history_path)
+        self.recent_history_df = pd.read_csv(recent_history_path)#add try except if file not found
         self.recent_history_df['timestamp'] = pd.to_datetime(self.recent_history_df['timestamp'])
         self.logger = PredictionLogger()
 

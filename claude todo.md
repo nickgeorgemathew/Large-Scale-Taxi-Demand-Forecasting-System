@@ -28,9 +28,9 @@ PS C:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System> (Set-Exe
 ## Phase 2 — `etl/spark_pipeline.py`
 - [ ] Download TLC taxi zone shapefile → data/raw/taxi_zones/
 - [x]  Fix COLUMN_MAP to map actual raw column names
-- [ ]  Fix all the bugs from the original Phase 2 list (alias F vs f, far_amount typo, fare_amount <= MAX_DISTANCE wrong column, method name mismatch)
-- [ ]  Test on your 21-row sample — confirm output parquet has columns zone_id, hour_timestamp, demand with sensible values before running on the real data
-- [] do def clean column names verified and logic checked
+- [x]  Fix all the bugs from the original Phase 2 list (alias F vs f, far_amount typo, fare_amount <= MAX_DISTANCE wrong column, method name mismatch)
+- [x]  Test on your 21-row sample — confirm output parquet has columns zone_id, hour_timestamp, demand with sensible values before running on the real data
+- [x] do def clean column names verified and logic checked
 - [x] Line 9: `stringType` → `StringType` (capitalization)
 - [x] Line 7 imports `functions as f` (lowercase) but lines 133, 158, 163–167, 171–172 use `F` (uppercase, never imported) — pick one alias and use it everywhere
 - [x] Line 105: `df.withColumn("far_amount", ...)` → should overwrite `"fare_amount"`, not create a new column `"far_amount"`
