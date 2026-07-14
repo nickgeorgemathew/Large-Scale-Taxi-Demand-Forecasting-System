@@ -95,8 +95,8 @@ class FeatureEngineer:
         for window in ROLLING_WINDOWS:
             shifted=grouped.shift(1)
             rolled=shifted.groupby(df["zone_id"]).transform(
-                lambda x:x.rolling(window,min_periods=1)
-            ).mean()
+                lambda x:x.rolling(window,min_periods=1).mean()
+            )
             df[f"roll_mean_{window}h"]=rolled
 
         for window in [6,24]:

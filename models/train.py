@@ -1,16 +1,19 @@
 import lightgbm
+
+import os
+os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
+
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
-import pyspark.pandas as ps
 import json
 import matplotlib.pyplot as plt
 import optuna
 from pathlib import Path
-import numpy as np
 import time
 import  joblib
 from config.settings import (
@@ -19,7 +22,8 @@ from config.settings import (
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
     TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
 )
-from evaluate import Evaluate
+from models.evaluate import Evaluate
+
 
 
 
@@ -56,21 +60,42 @@ class ModelTrainer:
         return df
 
 
-    def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
+    # def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
         
-        df=df.pandas_api()
+    #     df=df.pandas_api()
         
 
-        self.train=df[df.hour_timestamp<TRAIN_END_DATE]
-        self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&(df.hour_timestamp < VAL_END_DATE)]
-        self.test=df[df.hour_timestamp >= TEST_START_DATE]
+    #     self.train=df[df.hour_timestamp<TRAIN_END_DATE]
+    #     self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&(df.hour_timestamp < VAL_END_DATE)]
+    #     self.test=df[df.hour_timestamp >= TEST_START_DATE]
         
-        assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
-        assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
+    #     assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
+    #     assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
         
-        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
+    #     print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
         
-        return self.train, self.val, self.test 
+    #     return self.train, self.val, self.test 
+    
+    
+    #alternative to split_data_pandas if there occurs an error because of the data being over 10gb
+    
+        # def split_data(self, df):
+        # """Convert to Pandas once, split, and store as Pandas DataFrames."""
+        # pdf = df.toPandas()
+        # pdf['hour_timestamp'] = pd.to_datetime(pdf['hour_timestamp'])
+        
+        # self.train_pd = pdf[pdf['hour_timestamp'] < TRAIN_END_DATE]
+        # self.val_pd = pdf[(pdf['hour_timestamp'] >= TRAIN_END_DATE) & 
+        #                 (pdf['hour_timestamp'] < VAL_END_DATE)]
+        # self.test_pd = pdf[pdf['hour_timestamp'] >= TEST_START_DATE]
+        
+        # # Store Spark versions too (if needed for other methods)
+        # self.train = self.spark.createDataFrame(self.train_pd)
+        # self.val = self.spark.createDataFrame(self.val_pd)
+        # self.test = self.spark.createDataFrame(self.test_pd)
+        
+        # print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
+        # return self.train, self.val, self.test
 
     
 
@@ -190,7 +215,7 @@ class ModelTrainer:
         print("fitting the model")
         print("="*60)
 
-        self.model.fit(X_train,y_train,
+        self.quantile_low_model.fit(X_train,y_train,
                        eval_set=[(X_val, y_val)],
         
         callbacks=[early_stopping(100), log_evaluation(100)]
@@ -224,7 +249,7 @@ class ModelTrainer:
         print("fitting the model")
         print("="*60)
 
-        self.model.fit(X_train,y_train,
+        self.quantile_high_model.fit(X_train,y_train,
                        eval_set=[(X_val, y_val)],
         
         callbacks=[early_stopping(100), log_evaluation(100)]
@@ -290,6 +315,7 @@ class ModelTrainer:
 
 
 
+   
 
 
     
@@ -298,7 +324,11 @@ class ModelTrainer:
     def run_complete_pipeline(self):
         """Full training and evaluation pipeline."""
         evaluation=Evaluate()
-        
+        print("\n" + "="*60)
+        print("  creating new Spark session")
+        print("="*60)
+        spark=create_spark_session()
+        self.spark=spark
         # 1. Split data
         print("\n" + "="*60)
         print("  STEP 1: SPLITTING DATA")
@@ -310,9 +340,9 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 2: BASELINE MODEL")
         print("="*60)
-        baseline_metrics_train = evaluation.baseline_naive_seasonal(self.train,split="train")
-        baseline_metrics_val = evaluation.baseline_naive_seasonal(self.val,split="val")
-        baseline_metrics_test = evaluation.baseline_naive_seasonal(self.test,split="test")
+        baseline_metrics_train = evaluation.baseline_naive_seasonal(train,split="train")
+        baseline_metrics_val = evaluation.baseline_naive_seasonal(val,split="val")
+        baseline_metrics_test = evaluation.baseline_naive_seasonal(test,split="test")
         
         # 3. Fine tune hyper parameter of model
         print("\n" + "="*60)
@@ -355,10 +385,8 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 7:save model and features")
         print("="*60)
-        self.save_best_model()
+        self.save_best_model(version=datetime.today())
         
-        # 7. Save everything
-        self.save_artifacts()
         
         print("\n" + "="*60)
         print("  PIPELINE COMPLETE")

@@ -3,9 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import json
-import pyspark.pandas as ps
 from pathlib import Path
-import numpy as np
 import time
 import  joblib
 from config.settings import (
@@ -29,12 +27,12 @@ class Evaluate:
         self.baseline={}
 
 
-    def compute_metrics(self,y_true, y_pred, label:str='',print:bool=False):
+    def compute_metrics(self,y_true, y_pred, label:str='',print_metrics:bool=False):
         mae = mean_absolute_error(y_true, y_pred)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
         r2 = r2_score(y_true, y_pred)
         smape=self.smape(y_true, y_pred)
-        if print is True:
+        if print_metrics is True:
             print(f"\n{'='*60}")
             if label:
                 print(f"  {label}")
@@ -49,7 +47,7 @@ class Evaluate:
 
 
 
-    def baseline_naive_seasonal(self,df:ps.DataFrame,split:str=''):
+    def baseline_naive_seasonal(self,df:pd.DataFrame,split:str=''):
 
         preds = df['lag_168h']
         metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
@@ -80,14 +78,14 @@ class Evaluate:
             values=[baseline_metrics[val],model_metrics[val]]
             axs[i].bar(["baseline","model"],values)
             axs[i].set_title(val.upper())
-            axs[i].ylabel(val.upper())
+            axs[i].set_ylabel(val.upper())
         plt.savefig(f"models/artifacts/{split}_metric_plot.png")
         plt.tight_layout()
         plt.show()
 
 
 
-    def evaluate_model(self,df:ps.DataFrame,model,split:str=''):
+    def evaluate_model(self,df:pd.DataFrame,model,split:str=''):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
         y_pred = np.clip(y_pred,0,None)  

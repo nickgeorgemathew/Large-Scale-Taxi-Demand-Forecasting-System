@@ -47,22 +47,22 @@ PS C:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System> (Set-Exe
 ---
 
 ## Phase 3 — `features/engineer.py`
-- [ ] Line 115: self.zone_stats-(...)` → should be `self.zone_stats=(...)` (assignment, not subtraction)
-- [ ] Line 119 creates column `zone_std_demands` (with trailing "s"), but line 124 reads `zone_std_demand` (no "s") — make the name match in both places
-- [ ] Line 129: `pd.read_csv()` called with **no path argument** — add the actual zone-lookup file path, e.g. `pd.read_csv("data/taxi_zone_lookup.csv")`
-- [ ] Same line: this is wrapped in `except FileNotFoundError`, but a missing-argument call raises `TypeError`, not `FileNotFoundError` — once the path is added this becomes moot, but double check the except clause still makes sense
-- [ ] Lines 99–104: the `for window in [6,24]:` loop's body (computing `rolled_std`) is indented inside the loop, but the line that assigns it to `df[f"roll_std_{window}h"]` (line 104) is indented **outside** the loop — meaning `roll_std_6h` is silently never created, only `roll_std_24h` (using the loop's last value). Fix the indentation so the assignment is inside the loop
-- [ ] Line 204: calls `self.finalize(df)` but the method is defined as `finalise` (line 160, British spelling) — make these match
-- [ ] **Verify:** run feature engineering on the ETL output from Phase 2, confirm the printed `missing_features` warning list is empty
+- [x] Line 115: self.zone_stats-(...)` → should be `self.zone_stats=(...)` (assignment, not subtraction)
+- [x] Line 119 creates column `zone_std_demands` (with trailing "s"), but line 124 reads `zone_std_demand` (no "s") — make the name match in both places
+- [x] Line 129: `pd.read_csv()` called with **no path argument** — add the actual zone-lookup file path, e.g. `pd.read_csv("data/taxi_zone_lookup.csv")`
+- [x] Same line: this is wrapped in `except FileNotFoundError`, but a missing-argument call raises `TypeError`, not `FileNotFoundError` — once the path is added this becomes moot, but double check the except clause still makes sense
+- [x] Lines 99–104: the `for window in [6,24]:` loop's body (computing `rolled_std`) is indented inside the loop, but the line that assigns it to `df[f"roll_std_{window}h"]` (line 104) is indented **outside** the loop — meaning `roll_std_6h` is silently never created, only `roll_std_24h` (using the loop's last value). Fix the indentation so the assignment is inside the loop
+- [x] Line 204: calls `self.finalize(df)` but the method is defined as `finalise` (line 160, British spelling) — make these match
+- [x] **Verify:** run feature engineering on the ETL output from Phase 2, confirm the printed `missing_features` warning list is empty
 
 ---
 
 ## Phase 4 — `models/train.py` + `models/evaluate.py`
 **train.py:**
-- [ ] Remove duplicate `import numpy as np` (lines 3 and 13)
-- [ ] Line 22: `from evaluate import Evaluate` → `from models.evaluate import Evaluate` (or run things as a proper package — pick one convention and apply it everywhere in the repo)
-- [ ] Lines 193 and 227: inside `train_quantile_low_model`/`train_quantile_high_model`, `self.model.fit(...)` is called — should be `self.quantile_low_model.fit(...)` and `self.quantile_high_model.fit(...)` respectively
-- [ ] Lines 202, 236, 285: all reference `self.version`, but it's only ever set inside `save_best_model(self, version)` — which runs *after* these methods in the pipeline. Either pass a version string through the constructor, or reorder the pipeline so `save_best_model` runs first
+- [x] Remove duplicate `import numpy as np` (lines 3 and 13)
+- [x] Line 22: `from evaluate import Evaluate` → `from models.evaluate import Evaluate` (or run things as a proper package — pick one convention and apply it everywhere in the repo)
+- [x] Lines 193 and 227: inside `train_quantile_low_model`/`train_quantile_high_model`, `self.model.fit(...)` is called — should be `self.quantile_low_model.fit(...)` and `self.quantile_high_model.fit(...)` respectively
+- [] Lines 202, 236, 285: all reference `self.version`, but it's only ever set inside `save_best_model(self, version)` — which runs *after* these methods in the pipeline. Either pass a version string through the constructor, or reorder the pipeline so `save_best_model` runs first
 - [ ] Line 358: `self.save_best_model()` called with **no arguments**, but the method requires `version` — pass an actual version string, e.g. `self.save_best_model(version=datetime.now().strftime("%Y%m%d_%H%M"))`
 - [ ] Line 361: `self.save_artifacts()` is called but **this method doesn't exist anywhere in the class** — either write it, or remove the call if it's redundant with `save_best_model`
 - [ ] Line 313 area: the baseline-metric calls run on `self.train`/`self.val`/`self.test` (raw Spark DataFrames), but `Evaluate.baseline_naive_seasonal` indexes them like pandas (`df['lag_168h']`) — switch these calls to use `self.train_pd`/`self.val_pd`/`self.test_pd` instead

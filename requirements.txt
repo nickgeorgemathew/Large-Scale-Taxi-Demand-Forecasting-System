@@ -1,5 +1,6 @@
 pyspark
 pandas
+matplotlib
 lightgbm
 scikit-learn
 fastapi
