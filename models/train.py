@@ -119,9 +119,9 @@ class ModelTrainer:
         self.val_pd = self.val.toPandas()
         self.test_pd = self.test.toPandas()
 
-        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
+        print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
         
-        return self.train, self.val, self.test 
+        return self.train_pd, self.val_pd, self.test_pd 
 
     
    
@@ -167,7 +167,7 @@ class ModelTrainer:
         return self.best_model
 
 
-    def train_model(self):
+    def train_model(self,version):
         start=time.perf_counter()
         
 
@@ -192,13 +192,15 @@ class ModelTrainer:
         
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
+        model_path = MODEL_DIR / f"model_v{version}.pkl"
+        joblib.dump(self.model, model_path)
 
         
         return self.model
     
 
 
-    def train_quantile_low_model(self):
+    def train_quantile_low_model(self,version):
         start=time.perf_counter()
         
 
@@ -224,7 +226,7 @@ class ModelTrainer:
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
 
-        model_path = MODEL_DIR / f"quantile_low_model_v{self.version}.pkl"
+        model_path = MODEL_DIR / f"quantile_low_model_v{version}.pkl"
         joblib.dump(self.quantile_low_model, model_path)
         
         return self.quantile_low_model
@@ -232,7 +234,7 @@ class ModelTrainer:
 
 
 
-    def train_quantile_high_model(self):
+    def train_quantile_high_model(self,version):
         start=time.perf_counter()
         
 
@@ -258,7 +260,7 @@ class ModelTrainer:
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
 
-        model_path = MODEL_DIR / f"quantile_high_model_v{self.version}.pkl"
+        model_path = MODEL_DIR / f"quantile_high_model_v{version}.pkl"
         joblib.dump(self.quantile_high_model, model_path)
 
         
@@ -324,16 +326,12 @@ class ModelTrainer:
     def run_complete_pipeline(self):
         """Full training and evaluation pipeline."""
         evaluation=Evaluate()
-        print("\n" + "="*60)
-        print("  creating new Spark session")
-        print("="*60)
-        spark=create_spark_session()
-        self.spark=spark
+    
         # 1. Split data
         print("\n" + "="*60)
         print("  STEP 1: SPLITTING DATA")
         print("="*60)
-        df=self.load_data(PROCESSED_PATH)
+        df=self.load_data(FEATURES_PATH)
         train,val,test=self.split_data(df)
         
         # 2. Baseline
@@ -343,6 +341,15 @@ class ModelTrainer:
         baseline_metrics_train = evaluation.baseline_naive_seasonal(train,split="train")
         baseline_metrics_val = evaluation.baseline_naive_seasonal(val,split="val")
         baseline_metrics_test = evaluation.baseline_naive_seasonal(test,split="test")
+        print("\n" + "="*60)
+        print("   BASELINE MODEL METRICS")
+        print("\n TRAIN METRICS")
+        print(baseline_metrics_train)
+        print("\n Test METRICS")
+        print(baseline_metrics_test)
+        print("\n VALIDATION METRICS")
+        print(baseline_metrics_val)
+        print("="*60)
         
         # 3. Fine tune hyper parameter of model
         print("\n" + "="*60)
@@ -356,17 +363,17 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 4: TRAINING LIGHTGBM")
         print("="*60)
-        self.train_model()
-        self.train_quantile_high_model()
-        self.train_quantile_low_model()
+        model=self.train_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
+        quantile_low_model=self.train_quantile_high_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
+        quantile_high_model=self.train_quantile_low_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
 
         # 5. Evaluate
         print("\n" + "="*60)
         print("  STEP 5: EVALUATION")
         print("="*60)
-        train_metrics=evaluation.evaluate_model(self.train, self.model, 'train')
-        val_metrics=evaluation.evaluate_model(self.val, self.model, 'val')
-        test_metrics = evaluation.evaluate_model(self.test, self.model, 'test')
+        train_metrics=evaluation.evaluate_model(train, model, 'train')
+        val_metrics=evaluation.evaluate_model(val, model, 'val')
+        test_metrics = evaluation.evaluate_model(test, model, 'test')
         
         # 5. Feature importance
         print("\n" + "="*60)
@@ -378,14 +385,14 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 6: ERROR ANALYSIS")
         print("="*60)
-        evaluation.analyze_residuals(self.test, 'Test')
+        evaluation.analyze_residuals(test, 'Test')
 
 
          # 6. Residual analysis
         print("\n" + "="*60)
         print("  STEP 7:save model and features")
         print("="*60)
-        self.save_best_model(version=datetime.today())
+        self.save_best_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
         
         
         print("\n" + "="*60)
@@ -402,3 +409,14 @@ class ModelTrainer:
             'feature importance': importance_df
         }
     
+if __name__=="__main__":
+    print("\n" + "="*60)
+    print("  creating new Spark session")
+    print("="*60)
+    spark=create_spark_session()
+    try:
+        train=ModelTrainer(spark)
+        train.run_complete_pipeline()
+    finally:
+        spark.stop()
+        print("\n SparkSesssion stopped")

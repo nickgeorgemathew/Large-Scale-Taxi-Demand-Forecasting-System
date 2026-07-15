@@ -5,14 +5,16 @@ from pathlib import Path
 
 
 PROCESSED_PATH="C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/data/processed/processed.parquet"#where the processed nyc data  by etl/spark pipeline is stored
-FEATURES_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/features_store/selected_features.parquet")#path to file that contains the name of selected features of the dataset used for prediciton and learning
+FEATURES_PATH="C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/features_store/selected_features.parquet"#path to file that contains the data that has been feature engineered
+ZONE_PATH=""#file path where zone lookup file is present
 LAG_HOURS=[1, 2, 3, 6, 24, 48, 168]#the list of hours when lag is choosen
 ROLLING_WINDOWS=[1,2,3,6,24,48,168]#the hours/time gap of the rolling windows
 TRAIN_END_DATE="2022-03-22"#date in the dataset which splits the data into training(splitting dataset)
 VAL_END_DATE="2022-03-26"#date in the dataset which splits the data into validation(splitting dataset)
 TEST_START_DATE="2022-03-26"#date in the dataset which splits the data into testing(splitting dataset)
 TARGET_COLUMN="demand"#which column is the target/one which should be predicted
-FEATURE_COLUMNS=['hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday','is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded','lag_1h', 'lag_2h', 'lag_3h', 'lag_6h', 'lag_24h', 'lag_48h', 'lag_168h','roll_mean_3h', 'roll_mean_6h', 'roll_mean_24h','roll_std_6h', 'mean', 'std']#list of column names which are used to train
+FEATURE_COLUMNS=['hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday','is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded','lag_1h', 'lag_2h', 'lag_3h', 'lag_6h', 'lag_24h', 'lag_48h', 'lag_168h','roll_mean_3h', 'roll_mean_6h', 'roll_mean_24h','roll_std_6h', 'roll_std_24h',          # <-- added 24h std
+    'zone_mean_demand', 'zone_std_demand']#list of column names which are used to train
 MONITORED_FEATURES=['hour_of_day', 'day_of_week', 'month', 'is_weekend', 'is_holiday','is_rush_am', 'is_rush_pm', 'zone_id', 'borough_encoded','lag_1h', 'lag_2h', 'lag_3h', 'lag_6h', 'lag_24h', 'lag_48h', 'lag_168h','roll_mean_3h', 'roll_mean_6h', 'roll_mean_24h','roll_std_6h', 'mean', 'std']#features to be monitored to check if any drift or quality drop is happening
 PUBLIC_HOLIDAYS_2022=[]#rewrite as neccessary to the dataset ,to determine rush hours etc,must be a list of dates
 RAW_DATA_PATH="C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/yellow_tripdata_2022-03.parquet"#where the raw nyc taxi data is stored(path in str)

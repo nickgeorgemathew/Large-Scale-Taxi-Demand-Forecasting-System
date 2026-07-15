@@ -9,7 +9,7 @@ from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     PUBLIC_HOLIDAYS_2022,
-    TRAIN_END_DATE, VAL_END_DATE,
+    TRAIN_END_DATE, VAL_END_DATE,ZONE_PATH,
     TARGET_COLUMN, FEATURE_COLUMNS
 )
 
@@ -64,6 +64,9 @@ class FeatureEngineer:
             df["is_holiday"]=ts.dt.date.isin(
                 holidays
             ).astype(int)
+        else:
+            df["is_holiday"]=0
+
         print(f"  → Added temporal features: hour_of_day, day_of_week, "
               f"month, is_weekend, is_rush_am, is_rush_pm, is_night, is_holiday")
         return df
@@ -129,7 +132,7 @@ class FeatureEngineer:
 
 
         try:
-            zone_lookup=pd.read_csv("") 
+            zone_lookup=pd.read_csv(ZONE_PATH) 
             zone_lookup=zone_lookup.rename(columns={
                 "LocationID": "zone_id",
                 "Borough":    "borough"
@@ -176,7 +179,7 @@ class FeatureEngineer:
             print(f"    Check add_zone_features() — zone lookup file may be missing")
 
 
-        df.to_parquet(FEATURES_PATH, index=False)
+        df.to_parquet(FEATURES_PATH, index=False, allow_truncated_timestamps=True, coerce_timestamps='us')
         print(f"  → Saved {len(df):,} rows × {len(df.columns)} columns to {FEATURES_PATH}")
         print(f"  → Feature columns: {list(df.columns)}")
         return df
