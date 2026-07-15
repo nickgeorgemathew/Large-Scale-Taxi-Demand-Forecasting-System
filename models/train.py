@@ -47,11 +47,11 @@ def create_spark_session()->SparkSession:
 
 
 class ModelTrainer:
-    def __init__(self,spark):
+    def __init__(self,spark,version):
         self.spark=spark
         self.best_model={}
         self.baseline={}
-    
+        self.version=version
     
 
 
@@ -167,7 +167,7 @@ class ModelTrainer:
         return self.best_model
 
 
-    def train_model(self,version):
+    def train_model(self):
         start=time.perf_counter()
         
 
@@ -192,7 +192,7 @@ class ModelTrainer:
         
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
-        model_path = MODEL_DIR / f"model_v{version}.pkl"
+        model_path = MODEL_DIR / f"model_v{self.version}.pkl"
         joblib.dump(self.model, model_path)
 
         
@@ -200,7 +200,7 @@ class ModelTrainer:
     
 
 
-    def train_quantile_low_model(self,version):
+    def train_quantile_low_model(self):
         start=time.perf_counter()
         
 
@@ -226,7 +226,7 @@ class ModelTrainer:
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
 
-        model_path = MODEL_DIR / f"quantile_low_model_v{version}.pkl"
+        model_path = MODEL_DIR / f"quantile_low_model_v{self.version}.pkl"
         joblib.dump(self.quantile_low_model, model_path)
         
         return self.quantile_low_model
@@ -234,7 +234,7 @@ class ModelTrainer:
 
 
 
-    def train_quantile_high_model(self,version):
+    def train_quantile_high_model(self):
         start=time.perf_counter()
         
 
@@ -260,7 +260,7 @@ class ModelTrainer:
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
 
-        model_path = MODEL_DIR / f"quantile_high_model_v{version}.pkl"
+        model_path = MODEL_DIR / f"quantile_high_model_v{self.version}.pkl"
         joblib.dump(self.quantile_high_model, model_path)
 
         
@@ -274,8 +274,7 @@ class ModelTrainer:
     
     
     
-    def save_best_model(self,version):
-        self.version=version
+    def save_best_model(self):
         model_path = MODEL_DIR / f"lgbm_demand_v{self.version}.pkl"
         joblib.dump(self.model, model_path)
             
@@ -363,9 +362,9 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 4: TRAINING LIGHTGBM")
         print("="*60)
-        model=self.train_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
-        quantile_low_model=self.train_quantile_high_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
-        quantile_high_model=self.train_quantile_low_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
+        model=self.train_model()
+        quantile_low_model=self.train_quantile_high_model()
+        quantile_high_model=self.train_quantile_low_model()
 
         # 5. Evaluate
         print("\n" + "="*60)
@@ -392,7 +391,7 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 7:save model and features")
         print("="*60)
-        self.save_best_model(version=datetime.today().strftime("%Y%m%d_%H%M%S"))
+        self.save_best_model()
         
         
         print("\n" + "="*60)
@@ -415,7 +414,7 @@ if __name__=="__main__":
     print("="*60)
     spark=create_spark_session()
     try:
-        train=ModelTrainer(spark)
+        train=ModelTrainer(spark,version=datetime.today().strftime("%Y%m%d_%H%M%S"))
         train.run_complete_pipeline()
     finally:
         spark.stop()
