@@ -274,12 +274,29 @@ class ModelTrainer:
     
     
     
-    def save_best_model(self):
+    def save_best_model(self,models:list):
+
+        #call some evaluation metrics
+        #compare all models then the best model gets saved
+        best_model=model_evaluation(models)
+        "def some_evaluation_function(model):"
+        "       best=0"
+        "       best_model=None  "
+        "       for model in models:"
+        "           metrics =evalutate.evalutae_model(model)"
+        "           if best>metrics:"
+        "               best_model=model"
+        "           else:"
+        "               continue"
+        "       return best_model"""
+            
+        
         model_path = MODEL_DIR / f"lgbm_demand_v{self.version}.pkl"
-        joblib.dump(self.model, model_path)
+        joblib.dump(best_model, model_path)
             
         with open(MODEL_DIR/"feature_cols.json",'w') as f:
             json.dump(FEATURE_COLUMNS,f)
+        return best_model
         
         
 
@@ -287,11 +304,11 @@ class ModelTrainer:
 
 
 
-    def analyze_feature_importance(self, top_n=20):
+    def analyze_feature_importance(self,model,top_n=20):
         """Show which features matter most."""
         importance_df = pd.DataFrame({
             'feature': FEATURE_COLUMNS,
-            'importance': self.model.feature_importances_
+            'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
         
         print('='*60)
@@ -373,25 +390,36 @@ class ModelTrainer:
         train_metrics=evaluation.evaluate_model(train, model, 'train')
         val_metrics=evaluation.evaluate_model(val, model, 'val')
         test_metrics = evaluation.evaluate_model(test, model, 'test')
+        print("="*60)
+        print("EVALUTING QUANTILE LOW MODEL")
+        train_metrics_quantile_low=evaluation.evaluate_model(train, quantile_low_model, 'train')
+        val_metrics_quantile_low=evaluation.evaluate_model(val, quantile_low_model, 'val')
+        test_metrics_quantile_low = evaluation.evaluate_model(test, quantile_low_model, 'test')
+        print("="*60)
+        print("EVALUTING QUANTILE HIGH MODEL")
+        train_metrics_quantile_high=evaluation.evaluate_model(train, quantile_high_model, 'train')
+        val_metrics_quantile_high=evaluation.evaluate_model(val, quantile_high_model, 'val')
+        test_metrics_quantile_high = evaluation.evaluate_model(test, quantile_high_model, 'test')
+
+
+        #save best model and features
+        print("\n" + "="*60)
+        print("  STEP 6:save model and features")
+        print("="*60)
+        best_model=self.save_best_model(models=[model,quantile_high_model,quantile_low_model])
         
         # 5. Feature importance
         print("\n" + "="*60)
-        print("  STEP 5: FEATURE ANALYSIS")
+        print("  STEP 7: FEATURE ANALYSIS")
         print("="*60)
-        importance_df = self.analyze_feature_importance()
+        importance_df = self.analyze_feature_importance(best_model)
         
         # 6. Residual analysis
         print("\n" + "="*60)
-        print("  STEP 6: ERROR ANALYSIS")
+        print("  STEP 8: ERROR ANALYSIS")
         print("="*60)
-        evaluation.analyze_residuals(test, 'Test')
-
-
-         # 6. Residual analysis
-        print("\n" + "="*60)
-        print("  STEP 7:save model and features")
-        print("="*60)
-        self.save_best_model()
+        evaluation.analyze_residuals(test,best_model, 'Test')
+   
         
         
         print("\n" + "="*60)
@@ -405,6 +433,12 @@ class ModelTrainer:
             'train metrics':train_metrics,
             'validation_metrics':val_metrics,
             'test metrics': test_metrics,
+            'train metrics quantile low model':train_metrics_quantile_low,
+            'validation_metrics quantile low model':val_metrics_quantile_low,
+            'test metrics quanitle low model': test_metrics_quantile_low,
+            'train metrics quantile high model':train_metrics_quantile_high,
+            'validation_metrics quantile high model':val_metrics_quantile_high,
+            'test metrics quanitle high model': test_metrics_quantile_high,
             'feature importance': importance_df
         }
     
