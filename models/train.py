@@ -1,4 +1,5 @@
 import lightgbm
+from collections import Counter
 
 import os
 os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
@@ -268,7 +269,35 @@ class ModelTrainer:
 
 
     
-        
+    def best_model_selection(self,models:dict):
+        #compare all the metrics across the models and choose the best one
+        rmse={}
+        mae={}
+        r_square={}
+        smape={}
+
+        for k,model in models:
+            y_true = self.test_pd['demand']
+            y_pred = model.predict(self.test_pd[FEATURE_COLUMNS])
+            y_pred = np.clip(y_pred,0,None)  
+    
+            # Global metrics
+            MAE  = mean_absolute_error(y_true, y_pred)
+            RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
+            r2 = r2_score(y_true, y_pred)
+            SMAPE=self.smape(y_true,y_pred)
+            rmse[k]=RMSE
+            mae[k]=MAE
+            r_square[k]=r2
+            smape[k]=SMAPE
+        rmse_min=min(rmse.items())
+        mae_min=min(mae.items())
+        r_square_min=min(r_square.items())
+        smape_max=max(smape.items())
+        count=[rmse_min[0],mae_min[0],r_square_min[0],smape_max[0]]
+        count=Counter(count)
+        count=count.most_common(n=1)
+        return count[0][0]
        
 
     
@@ -276,27 +305,17 @@ class ModelTrainer:
     
     def save_best_model(self,models:list):
 
-        #call some evaluation metrics
+        #call  evaluation metrics
         #compare all models then the best model gets saved
-        best_model=model_evaluation(models)
-        "def some_evaluation_function(model):"
-        "       best=0"
-        "       best_model=None  "
-        "       for model in models:"
-        "           metrics =evalutate.evalutae_model(model)"
-        "           if best>metrics:"
-        "               best_model=model"
-        "           else:"
-        "               continue"
-        "       return best_model"""
-            
+        best_model=self.best_model_selection(models)
+        print(f"best model is {best_model}")
         
-        model_path = MODEL_DIR / f"lgbm_demand_v{self.version}.pkl"
-        joblib.dump(best_model, model_path)
+        model_path = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
+        joblib.dump(models[best_model], model_path)
             
         with open(MODEL_DIR/"feature_cols.json",'w') as f:
             json.dump(FEATURE_COLUMNS,f)
-        return best_model
+        return models[best_model]
         
         
 
@@ -406,7 +425,7 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 6:save model and features")
         print("="*60)
-        best_model=self.save_best_model(models=[model,quantile_high_model,quantile_low_model])
+        best_model=self.save_best_model(models={"base model":model,"quantile_high_model":quantile_high_model,"quantile_low_model":quantile_low_model})
         
         # 5. Feature importance
         print("\n" + "="*60)
