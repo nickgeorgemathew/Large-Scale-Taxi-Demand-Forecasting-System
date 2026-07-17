@@ -268,6 +268,16 @@ class ModelTrainer:
         return self.quantile_high_model
 
 
+
+
+    def smape(self,y_true, y_pred, epsilon=1e-10): 
+        y_true = np.array(y_true) 
+        y_pred = np.array(y_pred) 
+        numerator = 2 * np.abs(y_true - y_pred) 
+        denominator = np.abs(y_true) + np.abs(y_pred) + epsilon 
+        smape_value = np.mean(numerator / denominator) * 100 
+        return smape_value
+
     
     def best_model_selection(self,models:dict):
         #compare all the metrics across the models and choose the best one
@@ -276,7 +286,7 @@ class ModelTrainer:
         r_square={}
         smape={}
 
-        for k,model in models:
+        for k,model in models.items():
             y_true = self.test_pd['demand']
             y_pred = model.predict(self.test_pd[FEATURE_COLUMNS])
             y_pred = np.clip(y_pred,0,None)  
@@ -285,15 +295,15 @@ class ModelTrainer:
             MAE  = mean_absolute_error(y_true, y_pred)
             RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
             r2 = r2_score(y_true, y_pred)
-            SMAPE=self.smape(y_true,y_pred)
+            SMAPE=self.smape(y_true=y_true,y_pred=y_pred)
             rmse[k]=RMSE
             mae[k]=MAE
             r_square[k]=r2
             smape[k]=SMAPE
-        rmse_min=min(rmse.items())
-        mae_min=min(mae.items())
-        r_square_min=min(r_square.items())
-        smape_max=max(smape.items())
+        rmse_min=min(rmse.items(),key=lambda x:x[1])
+        mae_min=min(mae.items(),key=lambda x:x[1])
+        r_square_min=max(r_square.items(),key=lambda x:x[1])
+        smape_max=min(smape.items(),key=lambda x:x[1])
         count=[rmse_min[0],mae_min[0],r_square_min[0],smape_max[0]]
         count=Counter(count)
         count=count.most_common(n=1)
@@ -303,7 +313,7 @@ class ModelTrainer:
     
     
     
-    def save_best_model(self,models:list):
+    def save_best_model(self,models:dict):
 
         #call  evaluation metrics
         #compare all models then the best model gets saved
@@ -399,8 +409,8 @@ class ModelTrainer:
         print("  STEP 4: TRAINING LIGHTGBM")
         print("="*60)
         model=self.train_model()
-        quantile_low_model=self.train_quantile_high_model()
-        quantile_high_model=self.train_quantile_low_model()
+        quantile_low_model=self.train_quantile_low_model()
+        quantile_high_model=self.train_quantile_high_model()
 
         # 5. Evaluate
         print("\n" + "="*60)
@@ -425,19 +435,19 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 6:save model and features")
         print("="*60)
-        best_model=self.save_best_model(models={"base model":model,"quantile_high_model":quantile_high_model,"quantile_low_model":quantile_low_model})
+        chosen_model=self.save_best_model(models={"base model":model,"quantile_high_model":quantile_high_model,"quantile_low_model":quantile_low_model})
         
         # 5. Feature importance
         print("\n" + "="*60)
         print("  STEP 7: FEATURE ANALYSIS")
         print("="*60)
-        importance_df = self.analyze_feature_importance(best_model)
+        importance_df = self.analyze_feature_importance(chosen_model)
         
         # 6. Residual analysis
         print("\n" + "="*60)
         print("  STEP 8: ERROR ANALYSIS")
         print("="*60)
-        evaluation.analyze_residuals(test,best_model, 'Test')
+        evaluation.analyze_residuals(df=test,model=chosen_model, split_name='Test')
    
         
         

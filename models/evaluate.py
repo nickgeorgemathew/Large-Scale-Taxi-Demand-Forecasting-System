@@ -81,7 +81,7 @@ class Evaluate:
             axs[i].set_ylabel(val.upper())
         plt.savefig(f"models/artifacts/{split}_metric_plot.png")
         plt.tight_layout()
-        plt.show()
+        
 
 
 
