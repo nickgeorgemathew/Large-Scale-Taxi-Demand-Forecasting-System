@@ -62,17 +62,17 @@ PS C:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System> (Set-Exe
 - [x] Remove duplicate `import numpy as np` (lines 3 and 13)
 - [x] Line 22: `from evaluate import Evaluate` → `from models.evaluate import Evaluate` (or run things as a proper package — pick one convention and apply it everywhere in the repo)
 - [x] Lines 193 and 227: inside `train_quantile_low_model`/`train_quantile_high_model`, `self.model.fit(...)` is called — should be `self.quantile_low_model.fit(...)` and `self.quantile_high_model.fit(...)` respectively
-- [] Lines 202, 236, 285: all reference `self.version`, but it's only ever set inside `save_best_model(self, version)` — which runs *after* these methods in the pipeline. Either pass a version string through the constructor, or reorder the pipeline so `save_best_model` runs first
-- [ ] Line 358: `self.save_best_model()` called with **no arguments**, but the method requires `version` — pass an actual version string, e.g. `self.save_best_model(version=datetime.now().strftime("%Y%m%d_%H%M"))`
-- [ ] Line 361: `self.save_artifacts()` is called but **this method doesn't exist anywhere in the class** — either write it, or remove the call if it's redundant with `save_best_model`
-- [ ] Line 313 area: the baseline-metric calls run on `self.train`/`self.val`/`self.test` (raw Spark DataFrames), but `Evaluate.baseline_naive_seasonal` indexes them like pandas (`df['lag_168h']`) — switch these calls to use `self.train_pd`/`self.val_pd`/`self.test_pd` instead
-- [ ] Optional cleanup: `split_data_pandas` (line 59) is never called anywhere — either delete it or actually use it; dead code is confusing in an interview walkthrough
+- [x] Lines 202, 236, 285: all reference `self.version`, but it's only ever set inside `save_best_model(self, version)` — which runs *after* these methods in the pipeline. Either pass a version string through the constructor, or reorder the pipeline so `save_best_model` runs first
+- [x] Line 358: `self.save_best_model()` called with **no arguments**, but the method requires `version` — pass an actual version string, e.g. `self.save_best_model(version=datetime.now().strftime("%Y%m%d_%H%M"))`
+- [x] Line 361: `self.save_artifacts()` is called but **this method doesn't exist anywhere in the class** — either write it, or remove the call if it's redundant with `save_best_model`
+- [x] Line 313 area: the baseline-metric calls run on `self.train`/`self.val`/`self.test` (raw Spark DataFrames), but `Evaluate.baseline_naive_seasonal` indexes them like pandas (`df['lag_168h']`) — switch these calls to use `self.train_pd`/`self.val_pd`/`self.test_pd` instead
+- [x] Optional cleanup: `split_data_pandas` (line 59) is never called anywhere — either delete it or actually use it; dead code is confusing in an interview walkthrough
 
 **evaluate.py:**
-- [ ] Line 32: the parameter `print: bool=False` shadows Python's built-in `print` function — rename it to something like `verbose: bool=False`
-- [ ] Line 83: `axs[i].ylabel(...)` → `axs[i].set_ylabel(...)` (matplotlib Axes objects don't have `.ylabel()`)
-- [ ] Line 134: `analyze_residuals(self, df, split_name, model)` requires `model`, but it's called from `train.py` line 351 as `evaluation.analyze_residuals(self.test, 'Test')` — missing the `model` argument; add it
-- [ ] **Verify:** run training end-to-end on your sample, confirm a model file actually lands in `models/artifacts/`
+- [x] Line 32: the parameter `print: bool=False` shadows Python's built-in `print` function — rename it to something like `verbose: bool=False`
+- [x] Line 83: `axs[i].ylabel(...)` → `axs[i].set_ylabel(...)` (matplotlib Axes objects don't have `.ylabel()`)
+- [x] Line 134: `analyze_residuals(self, df, split_name, model)` requires `model`, but it's called from `train.py` line 351 as `evaluation.analyze_residuals(self.test, 'Test')` — missing the `model` argument; add it
+- [x] **Verify:** run training end-to-end on your sample, confirm a model file actually lands in `models/artifacts/`
 
 ---
 

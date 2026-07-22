@@ -66,7 +66,7 @@ class Evaluate:
         smape_value = np.mean(numerator / denominator) * 100 
         return smape_value
     
-    def plot_metrics(self,split:str=""):
+    def plot_metrics(self,model_name,split:str=""):
         fig,axs=plt.subplots(2, 2, figsize=(10,8))
         axs=axs.flatten()
         baseline_metrics=self.baseline[split]
@@ -79,13 +79,14 @@ class Evaluate:
             axs[i].bar(["baseline","model"],values)
             axs[i].set_title(val.upper())
             axs[i].set_ylabel(val.upper())
-        plt.savefig(f"models/artifacts/{split}_metric_plot.png")
+        plt.title(f"{model_name}_{split}_metric_plot")
+        plt.savefig(f"models/artifacts/{model_name}_{split}_metric_plot.png")
         plt.tight_layout()
         
 
 
 
-    def evaluate_model(self,df:pd.DataFrame,model,split:str=''):
+    def evaluate_model(self,df:pd.DataFrame,model,model_name,split:str=''):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
         y_pred = np.clip(y_pred,0,None)  
@@ -101,8 +102,8 @@ class Evaluate:
         SMAPE=self.smape(y_true,y_pred)
         model_metrics={'mae': MAE, 'rmse': RMSE, 'r2': r2,'smape':SMAPE}
         
-        self.metrics[split]=model_metrics
-        self.save_metrics(split)
+        self.metrics[model_name][split]=model_metrics
+        self.save_metrics(split,model_name)
         
          # Compare to baseline
         print(f"Model MAE: {MAE:.2f} | Baseline MAE: {baseline['mae']:.2f}")
@@ -110,7 +111,7 @@ class Evaluate:
         print(f"Model r2: {r2:.2f} | Baseline r2: {baseline['r2']:.2f}")
         print(f"Model SMAPE: {SMAPE:.2f} | Baseline SMAPE: {baseline['smape']:.2f}")
 
-        self.plot_metrics(split)
+        self.plot_metrics(split=split,model_name=model_name)
     
 
     
@@ -119,8 +120,8 @@ class Evaluate:
         
         
         
-    def save_metrics(self,split:str=''):
-        with open(MODEL_DIR/f"model_metrics_{split}.json",'w') as f:
+    def save_metrics(self,split:str='',model_name:str=''):
+        with open(MODEL_DIR/f"{model_name}model_metrics_{split}.json",'w') as f:
             json.dump(self.metrics[split],f)
         
         
