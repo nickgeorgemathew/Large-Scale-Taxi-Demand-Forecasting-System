@@ -70,7 +70,7 @@ class Evaluate:
         fig,axs=plt.subplots(2, 2, figsize=(10,8))
         axs=axs.flatten()
         baseline_metrics=self.baseline[split]
-        model_metrics=self.metrics[split]
+        model_metrics=self.metrics[model_name][split]
         metric_names = ["mae", "rmse", "r2", "smape"]
 
 
@@ -122,7 +122,7 @@ class Evaluate:
         
     def save_metrics(self,split:str='',model_name:str=''):
         with open(MODEL_DIR/f"{model_name}model_metrics_{split}.json",'w') as f:
-            json.dump(self.metrics[split],f)
+            json.dump(self.metrics[model_name][split],f)
         
         
         
