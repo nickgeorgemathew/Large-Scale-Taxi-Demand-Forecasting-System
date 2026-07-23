@@ -247,7 +247,8 @@ class Evaluate:
         plt.xlabel("Actual Demand")
         plt.ylabel("Predicted Demand")
         plt.title("Prediction vs Actual")
-        plt.savefig(f"models/artifacts/{split}_Prediction_vs_Actual.png")
+        plt.savefig(f"{MODEL_DIR}/{split}_Prediction_vs_Actual.png")
+        plt.close()
 
         # -------------------------------
         # 2. Residual Distribution
@@ -258,7 +259,8 @@ class Evaluate:
         plt.title("Residual Distribution")
         plt.xlabel("Residual")
         plt.ylabel("Frequency")
-        plt.savefig(f"models/artifacts/{split}_Residual_Distribution.png")
+        plt.savefig(f"{MODEL_DIR}/{split}_Residual_Distribution.png")
+        plt.close()
 
         # -------------------------------
         # 3. Residual vs Prediction
@@ -272,7 +274,8 @@ class Evaluate:
         plt.xlabel("Prediction")
         plt.ylabel("Residual")
         plt.title("Residual vs Prediction")
-        plt.savefig(f"models/artifacts/{split}_Residual_vs_prediction.png")
+        plt.savefig(f"{MODEL_DIR}/{split}_Residual_vs_prediction.png")
+        plt.close()
 
         # -------------------------------
         # 4. Error by Hour
@@ -286,39 +289,43 @@ class Evaluate:
         plt.title("Mean Absolute Error by Hour")
         plt.xlabel("Hour of Day")
         plt.ylabel("MAE")
-        plt.savefig(f"models/artifacts/{split}_mean_absolute_error_by_hour.png")
+        plt.savefig(f"{MODEL_DIR}/{split}_mean_absolute_error_by_hour.png")
+        plt.close()
 
         # -------------------------------
         # 5. Worst Zones
         # -------------------------------
 
-        per_zone = df.groupby("zone_id")["abs_error"].mean()
+        per_zone = df.groupby("zone_id")[["demand","prediction"]].apply(lambda x:self.smape(x["demand"],x["prediction"]))
 
         worst_zones = per_zone.sort_values(ascending=False).head(10)
 
-        print("\nWorst Zones (Highest Error):")
+        print("\nWorst Zones (Highest ErrorC):")
         print(worst_zones)
 
         worst_zones.plot(kind="bar", figsize=(10,4))
-        plt.title("Top 10 Worst Zones by Error")
+        plt.title("Top 10 Worst Zones by percentage Error")
         plt.ylabel("Mean Absolute Error")
-        plt.savefig(f"models/artifacts/{split}_top_10_worst_zones_by_error.png")
+        plt.savefig(f"{MODEL_DIR}/{split}_top_10_worst_zones_by_error.png")
+        plt.close()
 
         # -------------------------------
         # 6. Residuals Over Time
         # -------------------------------
 
         if "timestamp" in df.columns:
+            timestamp_mean_error=df.groupby("timestamp")["residual"].mean()
 
             plt.figure(figsize=(12,4))
 
-            plt.plot(df["timestamp"], residuals)
+            plt.plot(timestamp_mean_error.index,timestamp_mean_error.values)
 
             plt.axhline(0, color="red")
 
-            plt.title("Residuals Over Time")
+            plt.title(" Mean Residuals Over Time")
             plt.xlabel("Time")
             plt.ylabel("Residual")
-            plt.savefig(f"models/artifacts/{split}_residuals_over_time.png")
+            plt.savefig(f"{MODEL_DIR}/{split}_mean_residuals_over_time.png")
+            plt.close()
 
         print("\nReport Complete")
