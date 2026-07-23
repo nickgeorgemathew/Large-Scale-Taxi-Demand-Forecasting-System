@@ -79,17 +79,19 @@ class Evaluate:
             axs[i].bar(["baseline","model"],values)
             axs[i].set_title(val.upper())
             axs[i].set_ylabel(val.upper())
-        plt.title(f"{model_name}_{split}_metric_plot")
-        plt.savefig(f"models/artifacts/{model_name}_{split}_metric_plot.png")
+        plt.suptitle(f"{model_name}_{split}_metric_plot")
         plt.tight_layout()
+        plt.savefig(f"models/artifacts/{model_name}_{split}_metric_plot.png")
+        
         
 
 
 
-    def evaluate_model(self,df:pd.DataFrame,model,model_name,split:str=''):
+    def evaluate_model(self,df:pd.DataFrame,model,model_name,split:str='base'):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
         y_pred = np.clip(y_pred,0,None)  
+        self.metrics[model_name]={}
         
         print(f"evaluation for {split}")
         
@@ -121,7 +123,7 @@ class Evaluate:
         
         
     def save_metrics(self,split:str='',model_name:str=''):
-        with open(MODEL_DIR/f"{model_name}model_metrics_{split}.json",'w') as f:
+        with open(MODEL_DIR/f"{model_name}_model_metrics_{split}.json",'w') as f:
             json.dump(self.metrics[model_name][split],f)
         
         
@@ -245,7 +247,7 @@ class Evaluate:
         plt.xlabel("Actual Demand")
         plt.ylabel("Predicted Demand")
         plt.title("Prediction vs Actual")
-        plt.show()
+        plt.savefig(f"models/artifacts/{split}_Prediction_vs_Actual.png")
 
         # -------------------------------
         # 2. Residual Distribution
@@ -256,7 +258,7 @@ class Evaluate:
         plt.title("Residual Distribution")
         plt.xlabel("Residual")
         plt.ylabel("Frequency")
-        plt.show()
+        plt.savefig(f"models/artifacts/{split}_Residual_Distribution.png")
 
         # -------------------------------
         # 3. Residual vs Prediction
@@ -270,7 +272,7 @@ class Evaluate:
         plt.xlabel("Prediction")
         plt.ylabel("Residual")
         plt.title("Residual vs Prediction")
-        plt.show()
+        plt.savefig(f"models/artifacts/{split}_Residual_vs_prediction.png")
 
         # -------------------------------
         # 4. Error by Hour
@@ -284,7 +286,7 @@ class Evaluate:
         plt.title("Mean Absolute Error by Hour")
         plt.xlabel("Hour of Day")
         plt.ylabel("MAE")
-        plt.show()
+        plt.savefig(f"models/artifacts/{split}_mean_absolute_error_by_hour.png")
 
         # -------------------------------
         # 5. Worst Zones
@@ -300,7 +302,7 @@ class Evaluate:
         worst_zones.plot(kind="bar", figsize=(10,4))
         plt.title("Top 10 Worst Zones by Error")
         plt.ylabel("Mean Absolute Error")
-        plt.show()
+        plt.savefig(f"models/artifacts/{split}_top_10_worst_zones_by_error.png")
 
         # -------------------------------
         # 6. Residuals Over Time
@@ -317,6 +319,6 @@ class Evaluate:
             plt.title("Residuals Over Time")
             plt.xlabel("Time")
             plt.ylabel("Residual")
-            plt.show()
+            plt.savefig(f"models/artifacts/{split}_residuals_over_time.png")
 
         print("\nReport Complete")
