@@ -53,6 +53,9 @@ class ModelTrainer:
         self.best_model={}
         self.baseline={}
         self.version=version
+        with  open ("models/artifacts/model_version.json","w") as f:
+            json.dump(self.version,f)
+
     
 
 
