@@ -1,34 +1,35 @@
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
-from config.settings import PERFORMANCELOG, METRICLOG
+from config.settings import PERFORMANCELOG, METRICLOG,MODELCONDITIONLOG
 
 def save_log_parquet(log, file_path):
+    "file path must be a path that leads to the log file and not just a string"
     df_log = pd.DataFrame([log])
     try:
-        df_existing = pd.read_parquet(Path(file_path))
+        df_existing = pd.read_parquet(file_path)
         df_combined = pd.concat([df_existing, df_log], ignore_index=True)
-        df_combined.to_parquet(Path(file_path), engine='pyarrow')
+        df_combined.to_parquet(file_path, engine='pyarrow')
     except FileNotFoundError:
         df_log.to_parquet(Path(file_path), engine="pyarrow")
     return df_log
 
 class AlertManager:
 
-    def log_state(self, flag, file_path):
+    def log_state(self, flag):
         current_time = datetime.now().isoformat()
         log = {"timestamp": current_time, "severity": flag["severity"], "action": flag["action"]}
-        save_log_parquet(log, file_path / "performance_history.parquet")
+        save_log_parquet(log, PERFORMANCELOG)
 
-    def model_condition_log(self, flag, file_path):
-        current_time = datetime.now()
+    def model_condition_log(self, flag):
+        current_time = datetime.now().isoformat()
         log = {
             "timestamp": current_time,
             "severity": flag["severity"],
             "action triggered": flag["action"],
             "model state": flag["model_state"]
         }
-        save_log_parquet(log, file_path)
+        save_log_parquet(log, MODELCONDITIONLOG)
         return log
 
     def assess_performance(self, performance_flags):
@@ -62,7 +63,7 @@ class AlertManager:
         elif residual:
             condition_flags.update(severity="WARNING", action="INVESTIGATE BIAS(residual)")
 
-        self.log_state(condition_flags, PERFORMANCELOG)
+        self.log_state(condition_flags)
         return condition_flags
 
     def trigger_action(self, condition_flags, model_registry, pipeline):
@@ -76,28 +77,27 @@ class AlertManager:
             model_registry.rollback()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "ROLLED_BACK"},
-                METRICLOG
+                
             )
         elif severity == "RETRAIN":
             pipeline.trigger_retrain(reason=severity)
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "RETRAINING"},
-                METRICLOG
+               
             )
         elif severity == "WARNING":
             pipeline.increase_monitoring_frequency()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "DEGRADED"},
-                METRICLOG
+                
             )
         elif severity == "WATCH":
             pipeline.flag_for_review()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "WATCH"},
-                METRICLOG
+            
             )
         elif severity == "OK":
             self.model_condition_log(
-                {"severity": severity, "action": "NONE", "model_state": "HEALTHY"},
-                METRICLOG
+                {"severity": severity, "action": "NONE", "model_state": "HEALTHY"}
             )

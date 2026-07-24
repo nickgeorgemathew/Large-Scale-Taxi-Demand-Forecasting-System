@@ -8,9 +8,9 @@ from config.settings import LOG, METRICLOG
 class MetricsMonitor:
 
     def __init__(self):
-        self.evaluator = Evaluate()
+        self.evaluate = Evaluate()
         self.log_path = LOG
-        self.metric_path = Path(METRICLOG).parent  # directory for metrics
+        self.metric_path = METRICLOG.parent  # directory for metrics
 
     def load_logs(self):
         try:
@@ -23,7 +23,7 @@ class MetricsMonitor:
             raise FileNotFoundError(f"No prediction logs found at {self.log_path}")
 
     def compute_metrics(self, y_true, y_pred, label=""):
-        return self.evaluator.compute_metrics(y_true, y_pred, label)
+        return self.evaluate.compute_metrics(y_true, y_pred, label)
 
     def compute_rolling_metrics(self):
         df = self.load_logs()

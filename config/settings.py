@@ -44,6 +44,7 @@ SPARK_SHUFFLE_PARTITIONS="200"#used here.config("spark.sql.shuffle.partitions",S
 SPARK_DRIVER_MEMORY="4g"# used here spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]").config("spark.driver.memory",SPARK_DRIVER_MEMORY) find why
 LOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/log/log.parquet")#file location for storing parquet logs
 METRICLOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/metric_log/metric_log.parquet") #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
+MODELCONDITIONLOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/performance_log/model_performance_log.parquet")
 PERFORMANCELOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/performance_log/performance_log.parquet")# LOG THE PERFORMANCE ISSUES LIKE FEATURE DRIFT,METRIC DEGRADATION ETC WITH TIMESTAMP IN THIS LOCATION 
 MODEL_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/model")#path of where the model is stored
 QUANTILE_LOW_MODEL_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/quantile_low_model")#path of where the model is stored
