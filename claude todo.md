@@ -78,10 +78,10 @@ PS C:\Users\nikhi\Downloads\Large-Scale-Taxi-Demand-Forecasting-System> (Set-Exe
 
 ## Phase 5 — Monitoring layer (must work before the API will even start)
 **`monitoring/prediction_logger.py`:**
-- [ ] Line 15: `pd.read_parquet(path)` isn't wrapped in a try/except — wrap it so a first-ever run (no log file yet) doesn't crash
-- [ ] Line 18: `if df_existing:` — truthiness check on a DataFrame raises an error; change to `if not df_existing.empty:`
-- [ ] Lines 35, 39: both write to `self.log_path`, but `PredictionLogger.__init__` never sets this attribute — use the `path` parameter that's already passed into the method instead
-- [ ] `log_predictions`/`log_predictions_actual` build a plain dict and pass it to `save_logs_parquet`, which does `pd.DataFrame(logs)` — a dict of scalars needs to be wrapped in a list first: `pd.DataFrame([logs])`
+- [x] Line 15: `pd.read_parquet(path)` isn't wrapped in a try/except — wrap it so a first-ever run (no log file yet) doesn't crash
+- [x] Line 18: `if df_existing:` — truthiness check on a DataFrame raises an error; change to `if not df_existing.empty:`
+- [x] Lines 35, 39: both write to `self.log_path`, but `PredictionLogger.__init__` never sets this attribute — use the `path` parameter that's already passed into the method instead
+- [x] `log_predictions`/`log_predictions_actual` build a plain dict and pass it to `save_logs_parquet`, which does `pd.DataFrame(logs)` — a dict of scalars needs to be wrapped in a list first: `pd.DataFrame([logs])`
 
 **`monitoring/metrics_monitor.py`:**
 - [ ] Line 3: `from monitoring.prediction_logger import prediction_logger` — the actual class is `PredictionLogger` (capitalized) — fix the import name

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from models.evaluate import Evaluate
-from config.settings import LOG, METRICLOG
+from config.settings import LOG, METRICLOG,BASELINE_METRICS_PATH
 
 class MetricsMonitor:
 
@@ -58,7 +58,7 @@ class MetricsMonitor:
 
     def detect_performance_drift(self, filename, threshold=1.3):
         """Compare rolling metrics with baseline test metrics."""
-        baseline_path = Path("models/artifacts/model_metrics_test.json")
+        baseline_path = BASELINE_METRICS_PATH
         if not baseline_path.exists():
             raise FileNotFoundError("Baseline metrics not found. Train model first.")
 

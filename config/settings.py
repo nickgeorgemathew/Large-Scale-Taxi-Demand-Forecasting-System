@@ -7,6 +7,7 @@ from pathlib import Path
 PROCESSED_PATH="C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/data/processed/processed.parquet"#where the processed nyc data  by etl/spark pipeline is stored
 FEATURES_PATH="C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/features_store/selected_features.parquet"#path to file that contains the data that has been feature engineered
 ZONE_PATH=""#file path where zone lookup file is present
+BASELINE_METRICS_PATH=Path("models/artifacts/model_metrics_test.json")#file path where baseline metrics of the trained model is stored
 LAG_HOURS=[1, 2, 3, 6, 24, 48, 168]#the list of hours when lag is choosen
 ROLLING_WINDOWS=[1,2,3,6,24,48,168]#the hours/time gap of the rolling windows
 TRAIN_END_DATE="2022-03-22"#date in the dataset which splits the data into training(splitting dataset)

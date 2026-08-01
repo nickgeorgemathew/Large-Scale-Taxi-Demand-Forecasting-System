@@ -6,6 +6,7 @@ from datetime import datetime
 from config.settings import SERVING_HALTED, MONITORING_CONFIG
 
 class Pipeline:
+    
 
     def halt_serving(self, flag: bool, reason: str, timestamp: datetime):
         """Stop or resume serving predictions."""
