@@ -21,7 +21,7 @@ from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
+    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_CURRENT_TRAIN_DATA
 )
 from models.evaluate import Evaluate
 
@@ -61,6 +61,7 @@ class ModelTrainer:
 
     def load_data(self,file_path):
         df=self.spark.read.parquet(file_path)
+        PATH_CURRENT_TRAIN_DATA=file_path
         return df
 
 
@@ -124,6 +125,7 @@ class ModelTrainer:
         self.test_pd = self.test.toPandas()
 
         print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
+        pd.
         
         return self.train_pd, self.val_pd, self.test_pd 
 
