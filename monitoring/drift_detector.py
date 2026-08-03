@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from config.settings import MONITORED_FEATURES
+from spark_create import create_spark_session
+from config.settings import MONITORED_FEATURES,TEST_START_DATE,DATA_START_DATE,DATA_END_DATE,VAL_END_DATE,TRAIN_END_DATE,RAW_DATA_PATH
 
 def calculate_psi(expected, actual, n_bins=10):
     """Population Stability Index."""
@@ -47,3 +48,9 @@ class DriftDetector:
         if feature_detected:
             drift_flag["features"] = [k for k, v in feature_drift_flags.items() if v and k != "residual_drift"]
         return drift_flag
+
+
+
+if __name__=="__main__":
+    spark=create_spark_session()
+    
