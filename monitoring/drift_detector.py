@@ -4,7 +4,7 @@ from pyspark.sql import functions as f
 from config.settings import SPARK_APP_NAME,SPARK_DRIVER_MEMORY,SPARK_SHUFFLE_PARTITIONS
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
-from config.settings import MONITORED_FEATURES,TEST_START_DATE,DATA_START_DATE,DATA_END_DATE,VAL_END_DATE,TRAIN_END_DATE,FEATURES_PATH,RAW_DATA_FORMAT,PATH_CURRENT_TRAIN_DATA
+from config.settings import MONITORED_FEATURES,TEST_START_DATE,DATA_START_DATE,DATA_END_DATE,VAL_END_DATE,TRAIN_END_DATE,FEATURES_PATH,RAW_DATA_FORMAT,PATH_PREV_TRAIN_DATA,PROCESSED_PATH
 
 def calculate_psi(expected, actual, n_bins=10):
     """Population Stability Index."""
@@ -78,7 +78,7 @@ class DriftDetector:
                 psi = 0.0
             else:
                 psi = calculate_psi(train_vals, curr_vals)
-            feature_flag[f"{feature}_drift"] = psi > threshold
+            feature_flag[f"{feature}_drift"] = bool(psi > threshold)
         return feature_flag
 
     def compute_residual_drift(self, df, threshold=0.5):
@@ -101,10 +101,25 @@ class DriftDetector:
 if __name__=="__main__":
     spark=create_spark_session()
     detector=DriftDetector(spark=spark)
-    prev_df=detector.load_data(PATH_CURRENT_TRAIN_DATA)
-    current_df=detector.load_data(RAW_DATA_PATH)
+    prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
+    current_df=detector.load_data(PROCESSED_PATH)
     train_prev_df,val_prev_df,test_prev_df=detector.split_data(prev_df)
     train_current_df,val_current_df,test_current_df=detector.split_data(current_df)
+
     feature_drift_flag=detector.compute_feature_drift(train_current_df,train_prev_df)
-    residual_drift_flag=detector.compute_residual_drift()
+    print("===="*60)
+    print("feature drift flag")
+    print("===="*60)
+    print(feature_drift_flag)
+
+    residual_drift_flag=detector.compute_residual_drift(current_df)
+    print("===="*60)
+    print("residual_drift_flag")
+    print("===="*60)
+    print(residual_drift_flag)
+    
     drift_flag=detector.detect_drift(feature_drift_flag,residual_drift_flag)
+    print("===="*60)
+    print("drift_flag")
+    print("===="*60)
+    print(drift_flag)
