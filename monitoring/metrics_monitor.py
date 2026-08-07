@@ -85,3 +85,32 @@ class MetricsMonitor:
             performance_flags["r2_drift"] = True
 
         return performance_flags
+
+
+
+
+if __name__=="__main__":
+    spark=create_spark_session()
+    detector=DriftDetector(spark=spark)
+    prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
+    current_df=detector.load_data(FEATURES_PATH)
+    train_prev_df,val_prev_df,test_prev_df=detector.split_data(prev_df)
+    train_current_df,val_current_df,test_current_df=detector.split_data(current_df)
+
+    feature_drift_flag=detector.compute_feature_drift(train_current_df,train_prev_df)
+    print("===="*60)
+    print("feature drift flag")
+    print("===="*60)
+    print(feature_drift_flag)
+
+    residual_drift_flag=detector.compute_residual_drift(current_df)
+    print("===="*60)
+    print("residual_drift_flag")
+    print("===="*60)
+    print(residual_drift_flag)
+    
+    drift_flag=detector.detect_drift(feature_drift_flag,residual_drift_flag)
+    print("===="*60)
+    print("drift_flag")
+    print("===="*60)
+    print(drift_flag)

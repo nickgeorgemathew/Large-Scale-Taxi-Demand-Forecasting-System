@@ -69,8 +69,12 @@ class DriftDetector:
     
     def compute_feature_drift(self, training_df, current_df, threshold=0.1):
         feature_flag = {}
+        print("train df columns")
+        print(training_df.columns)
+        print("current_df columns")
+        print(current_df.columns)
         for feature in MONITORED_FEATURES:
-            if feature not in training_df.columns or feature not in current_df.columns:
+            if feature not in training_df.columns and feature not in current_df.columns:
                 continue
             train_vals = training_df[feature].dropna().values
             curr_vals = current_df[feature].dropna().values
@@ -79,6 +83,7 @@ class DriftDetector:
             else:
                 psi = calculate_psi(train_vals, curr_vals)
             feature_flag[f"{feature}_drift"] = bool(psi > threshold)
+            
         return feature_flag
 
     def compute_residual_drift(self, df, threshold=0.5):
@@ -102,7 +107,7 @@ if __name__=="__main__":
     spark=create_spark_session()
     detector=DriftDetector(spark=spark)
     prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
-    current_df=detector.load_data(PROCESSED_PATH)
+    current_df=detector.load_data(FEATURES_PATH)
     train_prev_df,val_prev_df,test_prev_df=detector.split_data(prev_df)
     train_current_df,val_current_df,test_current_df=detector.split_data(current_df)
 
