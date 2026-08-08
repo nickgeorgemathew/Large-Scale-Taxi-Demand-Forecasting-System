@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from models.evaluate import Evaluate
 from config.settings import LOG, METRICLOG,BASELINE_METRICS_PATH
 
+"get the predictions that the backend makes and store them in log with all metadata during prediction.store metrics in metriclog"
 class MetricsMonitor:
 
     def __init__(self):
@@ -83,34 +84,26 @@ class MetricsMonitor:
         # For R2, drift if rolling R2 < baseline R2 * threshold (threshold < 1)
         if rolling.get('r2', 0) < baseline.get('r2', 0) * (2 - threshold):  # e.g., threshold=1.3 -> factor=0.7
             performance_flags["r2_drift"] = True
-
+        self._save_metric(performance_flags,name=filename)
         return performance_flags
 
 
 
 
 if __name__=="__main__":
-    spark=create_spark_session()
-    detector=DriftDetector(spark=spark)
-    prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
-    current_df=detector.load_data(FEATURES_PATH)
-    train_prev_df,val_prev_df,test_prev_df=detector.split_data(prev_df)
-    train_current_df,val_current_df,test_current_df=detector.split_data(current_df)
+    monitor=MetricsMonitor()
+    log_df=monitor.load_logs()
+    print(log_df)
+    pred=log_df["prediction"]
+    true=log_df["actual"]
+    monitor.compute_metrics(true,pred)
+    metric_week,metric_24=monitor.compute_rolling_metrics()
+    print(metric_week)
+    print("\n")
+    print("\n"*5)
+    print(metric_24)
+    performance_flag=monitor.detect_performance_drift(filename="trial")
+    print("\n"*5)
+    print(performance_flag)
 
-    feature_drift_flag=detector.compute_feature_drift(train_current_df,train_prev_df)
-    print("===="*60)
-    print("feature drift flag")
-    print("===="*60)
-    print(feature_drift_flag)
 
-    residual_drift_flag=detector.compute_residual_drift(current_df)
-    print("===="*60)
-    print("residual_drift_flag")
-    print("===="*60)
-    print(residual_drift_flag)
-    
-    drift_flag=detector.detect_drift(feature_drift_flag,residual_drift_flag)
-    print("===="*60)
-    print("drift_flag")
-    print("===="*60)
-    print(drift_flag)
