@@ -95,4 +95,4 @@ class ModelRegistry:
         """
         if not self.artifacts_dir.exists():
             return []
-        return [str(p.name) for p in self.artifacts_dir.glob("*.pkl")]
+        return [str(p.name) for p in self.artifacts_dir.glob("*.pkl")]    

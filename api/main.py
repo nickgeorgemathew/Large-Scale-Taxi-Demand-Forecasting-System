@@ -11,7 +11,7 @@ from config.settings import (
 from monitoring.prediction_logger import PredictionLogger
 from monitoring.metrics_monitor import MetricsMonitor
 from monitoring.alert_manager import AlertManager
-from monitoring.model_registry_manager import ModelRegistry
+from retraining.model_registry_manager import ModelRegistry
 
 app = FastAPI(title="NYC Taxi Demand Forecast API")
 

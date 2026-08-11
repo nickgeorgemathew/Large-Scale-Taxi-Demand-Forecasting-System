@@ -17,11 +17,13 @@ def save_log_parquet(log, file_path):
 class AlertManager:
 
     def log_state(self, flag):
+        "log the current state  with metadata"
         current_time = datetime.now().isoformat()
         log = {"timestamp": current_time, "severity": flag["severity"], "action": flag["action"]}
         save_log_parquet(log, PERFORMANCELOG)
 
     def model_condition_log(self, flag):
+        "log the current state of the model and save it to MODELCONDITIONLOG"
         current_time = datetime.now().isoformat()
         log = {
             "timestamp": current_time,

@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 
 class PredictionLogger:
+    "to be used in a pipeline and in the backend"
 
     @staticmethod
     def save_logs_parquet(logs, path):
@@ -21,6 +22,7 @@ class PredictionLogger:
 
     @staticmethod
     def log_predictions(features: dict, prediction, model_version, path):
+        "save the predictions with metadata to a file"
         timestamp = pd.to_datetime(features["timestamp"])
         zone_id = features["zone_id"]
         log_dict = {
@@ -49,3 +51,9 @@ class PredictionLogger:
     @staticmethod
     def load_prediction_logs(log_path):
         return pd.read_parquet(log_path)
+
+
+
+if __name__=="__main__":
+    p=PredictionLogger()
+    p.load_prediction_logs()
