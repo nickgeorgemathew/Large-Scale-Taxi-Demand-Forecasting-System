@@ -21,7 +21,7 @@ from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_CURRENT_TRAIN_DATA
+    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_PREV_TRAIN_DATA,BEST_MODEL_PATH
 )
 from models.evaluate import Evaluate
 
@@ -60,8 +60,9 @@ class ModelTrainer:
 
 
     def load_data(self,file_path):
+        PATH_PREV_TRAIN_DATA=file_path
         df=self.spark.read.parquet(file_path)
-        PATH_CURRENT_TRAIN_DATA=file_path
+        
         return df
 
 
@@ -125,7 +126,7 @@ class ModelTrainer:
         self.test_pd = self.test.toPandas()
 
         print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
-        pd.
+        
         
         return self.train_pd, self.val_pd, self.test_pd 
 
@@ -285,11 +286,12 @@ class ModelTrainer:
 
     
     def best_model_selection(self,models:dict):
-        #compare all the metrics across the models and choose the best one
+        "compare all the metrics across the models and choose the best one"
         rmse={}
         mae={}
         r_square={}
         smape={}
+        metrics={}
 
         for k,model in models.items():
             y_true = self.test_pd['demand']
@@ -307,29 +309,36 @@ class ModelTrainer:
             smape[k]=SMAPE
         rmse_min=min(rmse.items(),key=lambda x:x[1])
         mae_min=min(mae.items(),key=lambda x:x[1])
-        r_square_min=max(r_square.items(),key=lambda x:x[1])
-        smape_max=min(smape.items(),key=lambda x:x[1])
-        count=[rmse_min[0],mae_min[0],r_square_min[0],smape_max[0]]
+        r_square_max=max(r_square.items(),key=lambda x:x[1])
+        smape_min=min(smape.items(),key=lambda x:x[1])
+        count=[rmse_min[0],mae_min[0],r_square_max[0],smape_min[0]]
         count=Counter(count)
         count=count.most_common(n=1)
-        return count[0][0]
+        metrics={'rmse':rmse[count[0][0]],'mae':mae[count[0][0]],'r_square':r_square[count[0][0]],"smape":smape[count[0][0]]}
+        
+        
+        
+        return count[0][0],metrics
        
 
     
     
     
     def save_best_model(self,models:dict):
+        "save the best model "
 
-        #call  evaluation metrics
-        #compare all models then the best model gets saved
-        best_model=self.best_model_selection(models)
+        best_model,metrics=self.best_model_selection(models)
         print(f"best model is {best_model}")
+        BEST_MODEL_NAME=f"{best_model}"
         
-        model_path = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
-        joblib.dump(models[best_model], model_path)
+        BEST_MODEL_PATH = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
+        joblib.dump(models[best_model], BEST_MODEL_PATH)
             
         with open(MODEL_DIR/"feature_cols.json",'w') as f:
             json.dump(FEATURE_COLUMNS,f)
+        #change file path according to system to save metrics of the best model
+        with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
+                json.dump(metrics,f)
         return models[best_model]
         
         
@@ -446,7 +455,7 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 7: FEATURE ANALYSIS")
         print("="*60)
-        importance_df = self.analyze_feature_importance(chosen_model)
+        importance_df = self.analyze_feature_importance(chosen_model["model"])
         
         # 6. Residual analysis
         print("\n" + "="*60)

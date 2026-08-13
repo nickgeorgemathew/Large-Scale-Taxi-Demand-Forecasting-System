@@ -1,7 +1,9 @@
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
-from config.settings import PERFORMANCELOG, METRICLOG,MODELCONDITIONLOG
+from config.settings import PERFORMANCELOG, METRICLOG,MODELCONDITIONLOG,BEST_MODEL_NAME
+from  monitoring.mlops_pipeline import Pipeline as pipeline
+from retraining.model_registry_manager import ModelRegistry as model_registry
 
 def save_log_parquet(log, file_path):
     "file path must be a path that leads to the log file and not just a string"
@@ -68,35 +70,36 @@ class AlertManager:
         self.log_state(condition_flags)
         return condition_flags
 
-    def trigger_action(self, condition_flags, model_registry, pipeline):
+    def trigger_action(self, condition_flags):
         severity = condition_flags["severity"]
         action = condition_flags["action"]
         timestamp = datetime.now()
 
         if severity == "CRITICAL":
+            
             pipeline.halt_serving(flag=True, reason=severity, timestamp=timestamp)
             pipeline.trigger_retrain(reason=severity)
             model_registry.rollback()
             self.model_condition_log(
-                {"severity": severity, "action": action, "model_state": "ROLLED_BACK"},
+                {"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME},
                 
             )
         elif severity == "RETRAIN":
             pipeline.trigger_retrain(reason=severity)
             self.model_condition_log(
-                {"severity": severity, "action": action, "model_state": "RETRAINING"},
+                {"severity": severity, "action": action, "model_state": "RETRAINING","model": BEST_MODEL_NAME},
                
             )
         elif severity == "WARNING":
             pipeline.increase_monitoring_frequency()
             self.model_condition_log(
-                {"severity": severity, "action": action, "model_state": "DEGRADED"},
+                {"severity": severity, "action": action, "model_state": "DEGRADED","model": BEST_MODEL_NAME},
                 
             )
         elif severity == "WATCH":
             pipeline.flag_for_review()
             self.model_condition_log(
-                {"severity": severity, "action": action, "model_state": "WATCH"},
+                {"severity": severity, "action": action, "model_state": "WATCH","model": BEST_MODEL_NAME},
             
             )
         elif severity == "OK":

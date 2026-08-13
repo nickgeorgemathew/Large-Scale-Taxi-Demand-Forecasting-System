@@ -3,7 +3,7 @@ import subprocess
 import logging
 from pathlib import Path
 from datetime import datetime
-from config.settings import SERVING_HALTED, MONITORING_CONFIG
+from config.settings import SERVING_HALTED, MONITORING_CONFIG,BEST_MODEL_NAME
 
 class Pipeline:
     
@@ -56,7 +56,7 @@ class Pipeline:
         flag = {
             "timestamp": datetime.now().isoformat(),
             "severity": "WATCH",
-            "model": "taxi_demand_xgboost_v2",
+            "model": BEST_MODEL_NAME,
             "reason": "feature drift detected, performance within threshold",
             "action_required": "manual review",
             "resolved": False

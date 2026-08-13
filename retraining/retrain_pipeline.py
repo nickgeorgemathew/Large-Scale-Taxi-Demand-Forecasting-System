@@ -8,7 +8,7 @@ from config.settings import PROCESSED_PATH, FEATURE_COLUMNS, TARGET_COLUMN
 from models.train import ModelTrainer
 from pyspark.sql import SparkSession
 from models.evaluate import Evaluate
-from monitoring.model_registry_manager import ModelRegistry
+from retraining.model_registry_manager import ModelRegistry
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
