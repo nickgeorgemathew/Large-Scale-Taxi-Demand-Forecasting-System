@@ -103,7 +103,7 @@ class DriftDetector:
 
 
 
-if __name__=="__main__":
+def run_drift_pipeline():
     spark=create_spark_session()
     detector=DriftDetector(spark=spark)
     prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
@@ -128,3 +128,4 @@ if __name__=="__main__":
     print("drift_flag")
     print("===="*60)
     print(drift_flag)
+    return drift_flag
