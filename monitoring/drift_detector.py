@@ -104,12 +104,13 @@ class DriftDetector:
 
 
 def run_drift_pipeline():
+    "Runs DriftDetector pipeline and returns drift_flag,feature_drift_flag and residual_drift_flag "
     spark=create_spark_session()
     detector=DriftDetector(spark=spark)
     prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
     current_df=detector.load_data(FEATURES_PATH)
-    train_prev_df,val_prev_df,test_prev_df=detector.split_data(prev_df)
-    train_current_df,val_current_df,test_current_df=detector.split_data(current_df)
+    train_prev_df,_,_=detector.split_data(prev_df)#throwable variables were val_prev_df,test_prev_df
+    train_current_df,_,_=detector.split_data(current_df)#throwable variables were val_current_df,test_current_df
 
     feature_drift_flag=detector.compute_feature_drift(train_current_df,train_prev_df)
     print("===="*60)
@@ -128,4 +129,4 @@ def run_drift_pipeline():
     print("drift_flag")
     print("===="*60)
     print(drift_flag)
-    return drift_flag
+    return drift_flag,feature_drift_flag,residual_drift_flag

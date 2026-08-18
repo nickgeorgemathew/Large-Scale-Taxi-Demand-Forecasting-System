@@ -16,8 +16,8 @@ class ModelopsPipeline:
     @staticmethod
     def model_drift_metrics_status():
         performance_flag,metric_week,metric_24=run_monitor_pipeline()
-        drift_flag=run_drift_pipeline()
-        AlertManager.assess_performance()
+        drift_flag,feature_drift_flag,residual_drift_flag=run_drift_pipeline()
+        
 
        
                 
