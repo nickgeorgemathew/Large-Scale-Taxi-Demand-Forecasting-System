@@ -16,7 +16,6 @@ class MetricsMonitor:
     def load_logs(self):
         try:
             self.log_df = pd.read_parquet(self.log_path)
-            # ensure required columns exist
             if 'actual' not in self.log_df.columns:
                 self.log_df['actual'] = None
             return self.log_df
@@ -86,24 +85,27 @@ class MetricsMonitor:
             performance_flags["r2_drift"] = True
         self._save_metric(performance_flags,name=filename)
         return performance_flags
+    def run_monitor_pipeline():
+        "Runs MetricMonitor pipeline and returns performance_flag,metric_week,metric_24 "
+        monitor=MetricsMonitor()
+        log_df=monitor.load_logs()
+        print(log_df)
+        pred=log_df["prediction"]
+        true=log_df["actual"]
+        monitor.compute_metrics(true,pred)
+        metric_week,metric_24=monitor.compute_rolling_metrics()
+        print(metric_week)
+        print("\n")
+        print("\n"*5)
+        print(metric_24)
+        performance_flag=monitor.detect_performance_drift(filename="trial")
+        print("\n"*5)
+        print(performance_flag)
+        return performance_flag,metric_week,metric_24
+    
 
 
 
 
-if __name__=="__main__":
-    monitor=MetricsMonitor()
-    log_df=monitor.load_logs()
-    print(log_df)
-    pred=log_df["prediction"]
-    true=log_df["actual"]
-    monitor.compute_metrics(true,pred)
-    metric_week,metric_24=monitor.compute_rolling_metrics()
-    print(metric_week)
-    print("\n")
-    print("\n"*5)
-    print(metric_24)
-    performance_flag=monitor.detect_performance_drift(filename="trial")
-    print("\n"*5)
-    print(performance_flag)
 
 
