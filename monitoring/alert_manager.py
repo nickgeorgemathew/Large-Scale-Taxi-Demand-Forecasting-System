@@ -106,3 +106,10 @@ class AlertManager:
             self.model_condition_log(
                 {"severity": severity, "action": "NONE", "model_state": "HEALTHY"}
             )
+def run_alert_manager(drift_flag,performance_flag):
+    "Runs AlertManager pipeline and returns condition_flag and trigger_action "
+    alert=AlertManager()
+    condition_flag=alert.assess_condition(performance_flag,drift_flag)
+    trigger_action=alert.trigger_action(condition_flag)
+    return condition_flag,trigger_action
+

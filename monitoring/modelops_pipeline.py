@@ -10,13 +10,14 @@ alert=AlertManager()
 drift=DriftDetector()
 
 class ModelopsPipeline:
-    def __init__(self):
-        pass
+    
 
     @staticmethod
-    def model_drift_metrics_status():
+    def model_status_condition():
+        "get the health,metric,drift of the model and return "
         performance_flag,metric_week,metric_24=run_monitor_pipeline()
         drift_flag,feature_drift_flag,residual_drift_flag=run_drift_pipeline()
+
         
 
        
