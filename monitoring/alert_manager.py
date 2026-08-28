@@ -1,9 +1,9 @@
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
-from config.settings import PERFORMANCELOG, METRICLOG,MODELCONDITIONLOG,BEST_MODEL_NAME
+from config.settings import PERFORMANCELOG, MODELCONDITIONLOG,BEST_MODEL_NAME
 from  monitoring.mlops_pipeline import Pipeline as pipeline
-from retraining.model_registry_manager import ModelRegistry as model_registry
+from retraining.model_registry_manager import ModelRegistry 
 
 def save_log_parquet(log, file_path):
     "file path must be a path that leads to the log file and not just a string"
@@ -17,6 +17,7 @@ def save_log_parquet(log, file_path):
     return df_log
 
 class AlertManager:
+    model_registry=ModelRegistry()
 
     def log_state(self, flag):
         "log the current state  with metadata"
@@ -39,7 +40,7 @@ class AlertManager:
     def assess_performance(self, performance_flags):
         return [k for k, val in performance_flags.items() if val]
 
-    def assess_drift(self, drift_flags):
+    def assess_drift(self, drift_flags):     
         feature = [k for k, val in drift_flags.items() if val and k != "residual_drift"]
         residual = [k for k, val in drift_flags.items() if val and k == "residual_drift"]
         return feature, residual
@@ -84,32 +85,48 @@ class AlertManager:
                 {"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME},
                 
             )
+            current_state={"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME,"actions_triggered":"halt_serving() and trigger_retrain(),model_registry.roll_back()"}
+            return current_state
         elif severity == "RETRAIN":
             pipeline.trigger_retrain(reason=severity)
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "RETRAINING","model": BEST_MODEL_NAME},
                
             )
+            current_state={"severity": severity, "action": action, "model_state": "RETRAINING","model": BEST_MODEL_NAME,"actions_triggered":"trigger_retrain()"}
+            return current_state
         elif severity == "WARNING":
             pipeline.increase_monitoring_frequency()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "DEGRADED","model": BEST_MODEL_NAME},
                 
             )
+            current_state={"severity": severity, "action": action, "model_state": "DEGRADED","model": BEST_MODEL_NAME,"actions_triggered":"increase_monitoring_frequency()"}
+            return current_state
         elif severity == "WATCH":
             pipeline.flag_for_review()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "WATCH","model": BEST_MODEL_NAME},
             
             )
+            current_state={"severity": severity, "action": action, "model_state": "WATCH","model": BEST_MODEL_NAME,"actions_triggered":"flag_for_review()"}
+            return current_state
         elif severity == "OK":
             self.model_condition_log(
                 {"severity": severity, "action": "NONE", "model_state": "HEALTHY"}
             )
-def run_alert_manager(drift_flag,performance_flag):
-    "Runs AlertManager pipeline and returns condition_flag and trigger_action "
+            current_state= {"severity": severity, "action": "NONE", "model_state": "HEALTHY"}
+            return current_state
+def run_alert_manager_condition(drift_flag,performance_flag):
+    "Runs AlertManager pipeline and returns condition_flag  "
     alert=AlertManager()
     condition_flag=alert.assess_condition(performance_flag,drift_flag)
     trigger_action=alert.trigger_action(condition_flag)
     return condition_flag,trigger_action
+
+def run_alert_manager_trigger_action(condition_flag):
+    "Runs AlertManager pipeline and runs trigger_action() to trigger mlops actions  "
+    alert=AlertManager()
+    trigger_action=alert.trigger_action(condition_flag)
+    return trigger_action
 
