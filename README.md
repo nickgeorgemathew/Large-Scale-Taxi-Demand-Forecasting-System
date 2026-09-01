@@ -84,7 +84,7 @@ Models are evaluated with MAE, RMSE, R², and SMAPE across train/val/test splits
 
 - Configuration currently uses hardcoded local file paths rather than environment variables — needs to be portable before someone else can run it.
 - Model artifacts are versioned by timestamp in `models/artifacts/`; a full model registry UI/CLI is in progress in `retraining_and_registry/`.
-- Dashboard is scaffolded but not yet wired to live prediction data.
+- Dashboard and api is being scaffolded .
 
 ## License
 
