@@ -340,14 +340,27 @@ class ModelTrainer:
             #change file path according to system to save metrics of the best model
             with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
                     json.dump(metrics,f)
+
+
+            if os.path.exists(MODEL_LIST) or os.path.getsize(model_list)==0:
+                model_list={}
+
+            else:
+            
+                with open(MODEL_LIST,"r") as f:
+
+                    model_list=json.load(f)
+
             model_metadata={"model_name":best_model,"model_path":BEST_MODEL_PATH,"date_added":datetime.today().strftime("%Y_%m_%d_%H_%M_%S")}
-            with open(MODEL_LIST,"+a") as f:
-                model_list=json.load(f)
-                model_list[BEST_MODEL_VER]=model_metadata
-                json.dump(model_list,f)
-            BEST_MODEL_VER+=1#what if the json.dump fails?how to stop the best_model_num from increasing:have added try block to prevent this,test if it works
+            model_list[str(BEST_MODEL_VER)]=model_metadata
+
+            with open(MODEL_LIST,"w") as f:
+                
+                json.dump(model_list,f,indent=4)
+            BEST_MODEL_VER+=1
+
         except Exception as e:
-            return(f"error :{e}")
+            return f"error :{e}"
         return models[best_model]
         
         
