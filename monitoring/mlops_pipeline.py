@@ -28,16 +28,19 @@ class Pipeline:
             return
 
         lock.touch()
+        log_file = open("logs/retrain.log", "a")
         try:
             subprocess.Popen(
-                ["python", "pipeline/retrain_pipeline.py", "--reason", reason],
-                stdout=open("logs/retrain.log", "a"),
-                stderr=subprocess.STDOUT
+            ["python", "pipeline/retrain_pipeline.py", "--reason", reason],
+            stdout=log_file,
+            stderr=subprocess.STDOUT
             )
             logging.info("Retrain triggered asynchronously")
         except Exception as e:
             logging.error(f"Failed to start retrain: {e}")
             lock.unlink(missing_ok=True)
+        finally:
+            log_file.close()
 
     def increase_monitoring_frequency(self):
         """Switch monitoring to high‑frequency mode via config file."""

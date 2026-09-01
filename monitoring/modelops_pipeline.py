@@ -13,11 +13,11 @@ from config.settings import SERVING_HALTED, MONITORING_CONFIG,BEST_MODEL_NAME
 
 
 
-metrics=MetricsMonitor()
-alert=AlertManager()
-drift=DriftDetector()
-mlops=Pipeline()
-model_registry=ModelRegistry()
+# metrics=MetricsMonitor()
+# alert=AlertManager()
+# drift=DriftDetector()
+# mlops=Pipeline()
+# model_registry=ModelRegistry()
 class ModelopsPipeline:
 
 

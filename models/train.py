@@ -21,7 +21,7 @@ from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_PREV_TRAIN_DATA,BEST_MODEL_PATH
+    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_PREV_TRAIN_DATA,BEST_MODEL_PATH,MODEL_LIST,BEST_MODEL_VER
 )
 from models.evaluate import Evaluate
 
@@ -33,6 +33,7 @@ from models.evaluate import Evaluate
 PROJECT_ROOT = Path(__file__).parent.parent
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
 
 
 def create_spark_session()->SparkSession:
@@ -326,19 +327,27 @@ class ModelTrainer:
     
     def save_best_model(self,models:dict):
         "save the best model "
-
-        best_model,metrics=self.best_model_selection(models)
-        print(f"best model is {best_model}")
-        BEST_MODEL_NAME=f"{best_model}"
-        
-        BEST_MODEL_PATH = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
-        joblib.dump(models[best_model], BEST_MODEL_PATH)
+        try:
+            best_model,metrics=self.best_model_selection(models)
+            print(f"best model is {best_model}")
+            BEST_MODEL_NAME=f"{best_model}"
             
-        with open(MODEL_DIR/"feature_cols.json",'w') as f:
-            json.dump(FEATURE_COLUMNS,f)
-        #change file path according to system to save metrics of the best model
-        with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
-                json.dump(metrics,f)
+            BEST_MODEL_PATH = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
+            joblib.dump(models[best_model], BEST_MODEL_PATH)
+                
+            with open(MODEL_DIR/"feature_cols.json",'w') as f:
+                json.dump(FEATURE_COLUMNS,f)
+            #change file path according to system to save metrics of the best model
+            with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
+                    json.dump(metrics,f)
+            model_metadata={"model_name":best_model,"model_path":BEST_MODEL_PATH,"date_added":datetime.today().strftime("%Y_%m_%d_%H_%M_%S")}
+            with open(MODEL_LIST,"+a") as f:
+                model_list=json.load(f)
+                model_list[BEST_MODEL_VER]=model_metadata
+                json.dump(model_list,f)
+            BEST_MODEL_VER+=1#what if the json.dump fails?how to stop the best_model_num from increasing:have added try block to prevent this,test if it works
+        except Exception as e:
+            return(f"error :{e}")
         return models[best_model]
         
         
