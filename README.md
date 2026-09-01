@@ -78,7 +78,7 @@ uvicorn api.main:app --reload
 
 ## Model evaluation
 
-Models are evaluated with MAE, RMSE, R², and SMAPE across train/val/test splits, with metrics and feature-importance plots versioned alongside each model artifact in `models/artifacts/`. *(Numbers intentionally omitted here — see the note on this in the accompanying review; re-verify and publish real, reproducible numbers before this goes in front of a recruiter.)*
+Models are evaluated with MAE, RMSE, R², and SMAPE across train/val/test splits, with metrics and feature-importance plots versioned alongside each model artifact in `models/artifacts/`. 
 
 ## Known limitations
 
