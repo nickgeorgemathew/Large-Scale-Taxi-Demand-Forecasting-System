@@ -4,12 +4,12 @@ sys.path.append(str(Path(__file__).parent.parent))
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
-
+sys.path.append("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/config")
 from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     PUBLIC_HOLIDAYS_2022,
-    TRAIN_END_DATE, VAL_END_DATE,
+    TRAIN_END_DATE, VAL_END_DATE,ZONE_PATH,
     TARGET_COLUMN, FEATURE_COLUMNS
 )
 
@@ -28,7 +28,7 @@ class FeatureEngineer:
 
     def load(self,path:str)->pd.DataFrame:
         print(f"\n[1/6] Loading processed data from: {path}")
-        df=pd.read_parquet(path)
+        df=pd.read_parquet(path,engine="pyarrow")
 
         df["hour_timestamp"]=pd.to_datetime(df["hour_timestamp"])
         df["zone_id"]=df["zone_id"].astype(int)
@@ -57,10 +57,16 @@ class FeatureEngineer:
         df["is_night"]=( (df["hour_of_day"] >= 22) | (df["hour_of_day"] <= 5)
         ).astype(int)
 
-        holidays=pd.to_datetime(PUBLIC_HOLIDAYS_2022)
-        df["is_holiday"]=ts.dt.date.astype(["datetime64[ns]"]).isin(
-            holidays
-        ).astype(int)
+
+        if len(PUBLIC_HOLIDAYS_2022)>0:
+            holidays=pd.to_datetime(PUBLIC_HOLIDAYS_2022)
+            
+            df["is_holiday"]=ts.dt.date.isin(
+                holidays
+            ).astype(int)
+        else:
+            df["is_holiday"]=0
+
         print(f"  → Added temporal features: hour_of_day, day_of_week, "
               f"month, is_weekend, is_rush_am, is_rush_pm, is_night, is_holiday")
         return df
@@ -92,8 +98,8 @@ class FeatureEngineer:
         for window in ROLLING_WINDOWS:
             shifted=grouped.shift(1)
             rolled=shifted.groupby(df["zone_id"]).transform(
-                lambda x:x.rolling(window,min_periods=1)
-            ).mean()
+                lambda x:x.rolling(window,min_periods=1).mean()
+            )
             df[f"roll_mean_{window}h"]=rolled
 
         for window in [6,24]:
@@ -101,7 +107,7 @@ class FeatureEngineer:
             rolled_std=shifted.groupby(df["zone_id"]).transform(
                 lambda x:x.rolling(window,min_periods=2).std()
             )
-        df[f"roll_std_{window}h"] = rolled_std.fillna(0)
+            df[f"roll_std_{window}h"] = rolled_std.fillna(0)
 
         print(f"  → Created {len(ROLLING_WINDOWS)} rolling mean + 2 rolling std features")
         return df
@@ -112,12 +118,12 @@ class FeatureEngineer:
     def add_zone_features(self,df:pd.DataFrame,train_mask:pd.Series)->pd.DataFrame:
         print(f"\n[5/6] Adding zone/spatial features...")
         train_df=df[train_mask]
-        self.zone_stats-(
+        self.zone_stats=(
             train_df.groupby("zone_id")["demand"]
             .agg(
                 zone_mean_demand="mean",
-                zone_std_demands="std",
-                zone_max_demands="max"
+                zone_std_demand="std",
+                zone_max_demand="max"
             )
             .reset_index()
         )
@@ -126,7 +132,7 @@ class FeatureEngineer:
 
 
         try:
-            zone_lookup=pd.read_csv() 
+            zone_lookup=pd.read_csv(ZONE_PATH) 
             zone_lookup=zone_lookup.rename(columns={
                 "LocationID": "zone_id",
                 "Borough":    "borough"
@@ -173,7 +179,7 @@ class FeatureEngineer:
             print(f"    Check add_zone_features() — zone lookup file may be missing")
 
 
-        df.to_parquet(FEATURES_PATH, index=False)
+        df.to_parquet(FEATURES_PATH, index=False, allow_truncated_timestamps=True, coerce_timestamps='us')
         print(f"  → Saved {len(df):,} rows × {len(df.columns)} columns to {FEATURES_PATH}")
         print(f"  → Feature columns: {list(df.columns)}")
         return df
@@ -201,7 +207,7 @@ class FeatureEngineer:
         df = self.add_zone_features(df, train_mask)
 
         # Save and return
-        df = self.finalize(df)
+        df = self.finalise(df)
 
         print("\n" + "=" * 60)
         print("  FEATURE ENGINEERING COMPLETE")

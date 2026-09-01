@@ -3,9 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import json
-import pyspark.pandas as ps
 from pathlib import Path
-import numpy as np
 import time
 import  joblib
 from config.settings import (
@@ -29,12 +27,12 @@ class Evaluate:
         self.baseline={}
 
 
-    def compute_metrics(self,y_true, y_pred, label:str='',print:bool=False):
+    def compute_metrics(self,y_true, y_pred, label:str='',print_metrics:bool=False):
         mae = mean_absolute_error(y_true, y_pred)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
         r2 = r2_score(y_true, y_pred)
         smape=self.smape(y_true, y_pred)
-        if print is True:
+        if print_metrics is True:
             print(f"\n{'='*60}")
             if label:
                 print(f"  {label}")
@@ -42,14 +40,14 @@ class Evaluate:
             print(f"  MAE:  {mae:.4f}")
             print(f"  RMSE: {rmse:.4f}")
             print(f"  R²:   {r2:.4f}")
-            print(f"  SMAPE:   {smape:.4f}")
+            print(f"  SMAPE:   {smape:.4f}")              
         
         return {'label':label,'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape} if label else {'mae': mae, 'rmse': rmse, 'r2': r2,'smape':smape}
     
 
 
 
-    def baseline_naive_seasonal(self,df:ps.DataFrame,split:str=''):
+    def baseline_naive_seasonal(self,df:pd.DataFrame,split:str=''):
 
         preds = df['lag_168h']
         metrics=self.compute_metrics(df['demand'], preds, label='Naive Seasonal Baseline')
@@ -68,11 +66,11 @@ class Evaluate:
         smape_value = np.mean(numerator / denominator) * 100 
         return smape_value
     
-    def plot_metrics(self,split:str=""):
+    def plot_metrics(self,model_name,split:str=""):
         fig,axs=plt.subplots(2, 2, figsize=(10,8))
         axs=axs.flatten()
         baseline_metrics=self.baseline[split]
-        model_metrics=self.metrics[split]
+        model_metrics=self.metrics[model_name][split]
         metric_names = ["mae", "rmse", "r2", "smape"]
 
 
@@ -80,17 +78,20 @@ class Evaluate:
             values=[baseline_metrics[val],model_metrics[val]]
             axs[i].bar(["baseline","model"],values)
             axs[i].set_title(val.upper())
-            axs[i].ylabel(val.upper())
-        plt.savefig(f"models/artifacts/{split}_metric_plot.png")
+            axs[i].set_ylabel(val.upper())
+        plt.suptitle(f"{model_name}_{split}_metric_plot")
         plt.tight_layout()
-        plt.show()
+        plt.savefig(f"models/artifacts/{model_name}_{split}_metric_plot.png")
+        
+        
 
 
 
-    def evaluate_model(self,df:ps.DataFrame,model,split:str=''):
+    def evaluate_model(self,df:pd.DataFrame,model,model_name,split:str='base'):
         y_true = df['demand']
         y_pred = model.predict(df[FEATURE_COLUMNS])
         y_pred = np.clip(y_pred,0,None)  
+        self.metrics[model_name]={}
         
         print(f"evaluation for {split}")
         
@@ -103,8 +104,8 @@ class Evaluate:
         SMAPE=self.smape(y_true,y_pred)
         model_metrics={'mae': MAE, 'rmse': RMSE, 'r2': r2,'smape':SMAPE}
         
-        self.metrics[split]=model_metrics
-        self.save_metrics(split)
+        self.metrics[model_name][split]=model_metrics
+        self.save_metrics(split,model_name)
         
          # Compare to baseline
         print(f"Model MAE: {MAE:.2f} | Baseline MAE: {baseline['mae']:.2f}")
@@ -112,7 +113,7 @@ class Evaluate:
         print(f"Model r2: {r2:.2f} | Baseline r2: {baseline['r2']:.2f}")
         print(f"Model SMAPE: {SMAPE:.2f} | Baseline SMAPE: {baseline['smape']:.2f}")
 
-        self.plot_metrics(split)
+        self.plot_metrics(split=split,model_name=model_name)
     
 
     
@@ -121,9 +122,9 @@ class Evaluate:
         
         
         
-    def save_metrics(self,split:str=''):
-        with open(MODEL_DIR/f"model_metrics_{split}.json",'w') as f:
-            json.dump(self.metrics[split],f)
+    def save_metrics(self,split:str='',model_name:str=''):
+        with open(MODEL_DIR/f"{model_name}_model_metrics_{split}.json",'w') as f:
+            json.dump(self.metrics[model_name][split],f)
         
         
         
@@ -246,7 +247,8 @@ class Evaluate:
         plt.xlabel("Actual Demand")
         plt.ylabel("Predicted Demand")
         plt.title("Prediction vs Actual")
-        plt.show()
+        plt.savefig(f"{MODEL_DIR}/{split}_Prediction_vs_Actual.png")
+        plt.close()
 
         # -------------------------------
         # 2. Residual Distribution
@@ -257,7 +259,8 @@ class Evaluate:
         plt.title("Residual Distribution")
         plt.xlabel("Residual")
         plt.ylabel("Frequency")
-        plt.show()
+        plt.savefig(f"{MODEL_DIR}/{split}_Residual_Distribution.png")
+        plt.close()
 
         # -------------------------------
         # 3. Residual vs Prediction
@@ -271,7 +274,8 @@ class Evaluate:
         plt.xlabel("Prediction")
         plt.ylabel("Residual")
         plt.title("Residual vs Prediction")
-        plt.show()
+        plt.savefig(f"{MODEL_DIR}/{split}_Residual_vs_prediction.png")
+        plt.close()
 
         # -------------------------------
         # 4. Error by Hour
@@ -285,39 +289,43 @@ class Evaluate:
         plt.title("Mean Absolute Error by Hour")
         plt.xlabel("Hour of Day")
         plt.ylabel("MAE")
-        plt.show()
+        plt.savefig(f"{MODEL_DIR}/{split}_mean_absolute_error_by_hour.png")
+        plt.close()
 
         # -------------------------------
         # 5. Worst Zones
         # -------------------------------
 
-        per_zone = df.groupby("zone_id")["abs_error"].mean()
+        per_zone = df.groupby("zone_id")[["demand","prediction"]].apply(lambda x:self.smape(x["demand"],x["prediction"]))
 
         worst_zones = per_zone.sort_values(ascending=False).head(10)
 
-        print("\nWorst Zones (Highest Error):")
+        print("\nWorst Zones (Highest ErrorC):")
         print(worst_zones)
 
         worst_zones.plot(kind="bar", figsize=(10,4))
-        plt.title("Top 10 Worst Zones by Error")
+        plt.title("Top 10 Worst Zones by percentage Error")
         plt.ylabel("Mean Absolute Error")
-        plt.show()
+        plt.savefig(f"{MODEL_DIR}/{split}_top_10_worst_zones_by_error.png")
+        plt.close()
 
         # -------------------------------
         # 6. Residuals Over Time
         # -------------------------------
 
         if "timestamp" in df.columns:
+            timestamp_mean_error=df.groupby("timestamp")["residual"].mean()
 
             plt.figure(figsize=(12,4))
 
-            plt.plot(df["timestamp"], residuals)
+            plt.plot(timestamp_mean_error.index,timestamp_mean_error.values)
 
             plt.axhline(0, color="red")
 
-            plt.title("Residuals Over Time")
+            plt.title(" Mean Residuals Over Time")
             plt.xlabel("Time")
             plt.ylabel("Residual")
-            plt.show()
+            plt.savefig(f"{MODEL_DIR}/{split}_mean_residuals_over_time.png")
+            plt.close()
 
         print("\nReport Complete")

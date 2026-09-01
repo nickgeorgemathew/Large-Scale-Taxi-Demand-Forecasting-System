@@ -1,75 +1,73 @@
-from fastapi import FastAPI,httpexception,Query
-from predictor import TaxiForecaster
-from config.settings import VALID_ZONE_MIN, VALID_ZONE_MAX,MODEL_PATH,QUANTILE_LOW_MODEL_PATH,RECENT_HISTORY,QUANTILE_HIGH_MODEL_PATH,HOTSPOTS,FEATURES_PATH,LOG,METRICLOG
-import numpy as np
-from monitoring.alert_manager import AlertManager
+from fastapi import FastAPI, Query
 import pandas as pd
 import json
+from pathlib import Path
+from predictor import TaxiForecaster
+from config.settings import (
+    MODEL_PATH, QUANTILE_LOW_MODEL_PATH, QUANTILE_HIGH_MODEL_PATH,
+    FEATURES_PATH, RECENT_HISTORY, LOG, METRICLOG, SERVING_HALTED,
+    VALID_ZONE_MIN, VALID_ZONE_MAX, HOTSPOTS
+)
 from monitoring.prediction_logger import PredictionLogger
 from monitoring.metrics_monitor import MetricsMonitor
-
+from monitoring.alert_manager import AlertManager
+from retraining.model_registry_manager import ModelRegistry
 
 app = FastAPI(title="NYC Taxi Demand Forecast API")
-forecaster = TaxiForecaster(MODEL_PATH,FEATURES_PATH,RECENT_HISTORY,QUANTILE_LOW_MODEL_PATH,QUANTILE_HIGH_MODEL_PATH)
-logs=PredictionLogger()
-metric=MetricsMonitor()
-alert=AlertManager()
-valid_zone=np.arange(VALID_ZONE_MIN,VALID_ZONE_MAX)   
-  
+
+# Initialize components
+forecaster = TaxiForecaster(
+    model_path=MODEL_PATH,
+    feature_path=FEATURES_PATH,
+    recent_history_path=RECENT_HISTORY,
+    quantile_low_model_path=QUANTILE_LOW_MODEL_PATH,
+    quantile_high_model_path=QUANTILE_HIGH_MODEL_PATH
+)
+logger = PredictionLogger()
+monitor = MetricsMonitor()
+alert_mgr = AlertManager()
+registry = ModelRegistry()
+valid_zone = list(range(VALID_ZONE_MIN, VALID_ZONE_MAX + 1))
 
 @app.get('/')
 def root():
-  return("NYC Taxi Demand Forecast API")
-
+    return {"message": "NYC Taxi Demand Forecast API"}
 
 @app.get('/forecast/{zone_id}/{hours_ahead}')
-def predict(zone_id,hours_ahead:int=Query(24,gt=0)):
-  with open() as f:
-    flag=json.load(f)
-  if flag==True:
-    return{"serving": False, "halted_at": flag['halted_at'], "reason": flag['reason']}
-  
-  else:
-    if zone_id not in valid_zone:
-      return(f"zone id entered is not valid,please enter zone_id between{VALID_ZONE_MIN} and {VALID_ZONE_MAX}")
+def predict(zone_id: int, hours_ahead: int = Query(24, gt=0, le=72)):
+    # Check if serving is halted
+    halted_path = Path(SERVING_HALTED)
+    if halted_path.exists():
+        with open(halted_path, 'r') as f:
+            flag = json.load(f)
+        if flag.get("serving_halted", True):
+            return {"serving": False, "halted_at": flag.get("halted_at"), "reason": flag.get("reason")}
 
-      
-    else:
-      result=forecaster.predict(zone_id,hours_ahead)
-      logs.save_logs_parquet(result,HOTSPOTS)
-      return result.to_dict(orient="records")
-    
-  
+    if zone_id not in valid_zone:
+        return {"error": f"zone_id must be between {VALID_ZONE_MIN} and {VALID_ZONE_MAX}"}
+
+    result = forecaster.predict(zone_id, hours_ahead)
+    return [r.dict() for r in result]
 
 @app.get('/hotspots/{timestamp}')
-def get_hotspots(timestamp,top_n: int = 20):
+def get_hotspots(timestamp: str = None, top_n: int = 20):
     if timestamp is None:
-      timestamp=pd.Timestamp.now().floor('h')
+        timestamp = pd.Timestamp.now().floor('h')
     else:
-      timestamp=pd.to_datetime(timestamp).floor('h')
-    all_zones=forecaster.build_feature_rows_all_zones(timestamp,valid_zone)
-    result=forecaster.predict_hotspots(all_zones,timestamp)
-    result = result.sort_values(
-        "predicted_demand",
-        ascending=False
-    )
-    logs.save_logs_parquet(result,HOTSPOTS)
-
+        timestamp = pd.to_datetime(timestamp).floor('h')
+    all_zones = forecaster.build_feature_rows_all_zones(timestamp, valid_zone)
+    result = forecaster.predict_hotspots(all_zones, timestamp)
+    result = result.sort_values("predicted_demand", ascending=False)
+    logger.save_logs_parquet(result.head(top_n).to_dict(orient="records"), HOTSPOTS)
     return result.head(top_n).to_dict(orient="records")
-
-
 
 @app.get('/health')
 def get_health():
-  with open(METRICLOG,"r")as f:
-    health=json.load(f)
-  return health
-
-  
-  
-  
-  
-  
-  
-# GET PREVIOUS PREDICTIONS
-# GET MODEL PERFORMANCE OR RETRAINING
+    # Return the latest model condition log
+    metric_path = Path(METRICLOG)
+    if metric_path.exists():
+        df = pd.read_parquet(metric_path)
+        if not df.empty:
+            latest = df.sort_values("timestamp", ascending=False).iloc[0].to_dict()
+            return latest
+    return {"status": "unknown", "message": "No health logs found"}

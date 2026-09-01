@@ -1,86 +1,59 @@
 import pandas as pd
-from datetime import datetime
-from pathlib import Path 
-from config.settings import LOG
-
+from pathlib import Path
 
 class PredictionLogger:
-    def __init__(self):
-        pass
+    "to be used in a pipeline and in the backend"
 
-    def save_logs_parquet(self,logs,path):
-        df_logs=pd.DataFrame(logs) 
-        path=Path(path)       
-        # Load, Combine, and Overwrite
-        df_existing = pd.read_parquet(path)
+    @staticmethod
+    def save_logs_parquet(logs, path):
+        """Append logs (list of dicts or single dict) to a parquet file."""
+        path = Path(path)
+        df_logs = pd.DataFrame(logs if isinstance(logs, list) else [logs])
 
-
-        if df_existing:
-            # perform a 'merge' with an 'indicator' to see which rows are new
-            check_merge = pd.merge(
-                df_logs, 
-                df_existing[['timestamp', 'zone_id']], 
-                on=['timestamp', 'zone_id'], 
-                how='left', 
-                indicator=True
-            )
-            # Check if any row in df_logs was found in df_existing
-            is_duplicate = (check_merge['_merge'] == 'both').any()
-            
-            if is_duplicate:
-                
-                return "duplicate predictions"
-            else:
-                df_combined = pd.concat([df_existing, df_logs], ignore_index=True)
-                df_combined.to_parquet(self.log_path, engine='pyarrow')
-
-        else:
-
-            df_logs.to_parquet(self.log_path,engine="pyarrow") 
+        try:
+            df_existing = pd.read_parquet(path)
+            # simple concatenation – duplicates are responsibility of caller
+            df_combined = pd.concat([df_existing, df_logs], ignore_index=True)
+            df_combined.to_parquet(path, engine='pyarrow')
+        except FileNotFoundError:
+            df_logs.to_parquet(path, engine='pyarrow')
 
         return logs
-    
 
-
-    def log_predictions(self,features:dict,prediction,model_version,path):
-        
-        #add features that are being used for prediction and monitioring
-        timestamp=pd.to_datetime(features["timestamp"])
-        zone_id=features["zone_id"]
-        
-        
-        #add features and info that need to be logged
-        log_dict={
-            "timestamp":timestamp,
-            "model_version":model_version,
-            "zone_id":zone_id,
-            "prediction":prediction,
-            
+    @staticmethod
+    def log_predictions(features: dict, prediction, model_version, path):
+        "save the predictions with metadata to a file"
+        timestamp = pd.to_datetime(features["timestamp"])
+        zone_id = features["zone_id"]
+        log_dict = {
+            "timestamp": timestamp,
+            "model_version": model_version,
+            "zone_id": zone_id,
+            "prediction": prediction,
         }
-        self.save_logs_parquet(log_dict,path)
+        PredictionLogger.save_logs_parquet(log_dict, path)
 
-    def log_predictions_actual(self,features:dict,prediction,actual,model_version,path):
-        
-        #add features that are being used for prediction and monitioring
-        timestamp=pd.to_datetime(features["timestamp"])
-        zone_id=features["zone_id"]
-        residual= (actual-prediction) if actual else None
-        
-        #add features and info that need to be logged
-        log_dict={
-            "timestamp":timestamp,
-            "model_version":model_version,
+    @staticmethod
+    def log_predictions_actual(features: dict, prediction, actual, model_version, path):
+        timestamp = pd.to_datetime(features["timestamp"])
+        zone_id = features["zone_id"]
+        residual = (actual - prediction) if actual is not None else None
+        log_dict = {
+            "timestamp": timestamp,
+            "model_version": model_version,
             "residual": residual,
-            "zone_id":zone_id,
-            "prediction":prediction,
-            "actual":actual if actual else None
+            "zone_id": zone_id,
+            "prediction": prediction,
+            "actual": actual if actual is not None else None
         }
-        self.save_logs_parquet(log_dict,path)
-        
+        PredictionLogger.save_logs_parquet(log_dict, path)
 
-        
+    @staticmethod
+    def load_prediction_logs(log_path):
+        return pd.read_parquet(log_path)
 
 
-    def load_prediciton_logs(self,log_path):
-        df=pd.read_parquet(log_path)
-        return df
+
+if __name__=="__main__":
+    p=PredictionLogger()
+    p.load_prediction_logs()

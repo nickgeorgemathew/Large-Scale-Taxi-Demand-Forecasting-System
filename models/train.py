@@ -1,25 +1,30 @@
 import lightgbm
+from collections import Counter
+
+import os
+os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
+
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from lightgbm import LGBMRegressor, early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
-import pyspark.pandas as ps
 import json
 import matplotlib.pyplot as plt
 import optuna
 from pathlib import Path
-import numpy as np
 import time
 import  joblib
 from config.settings import (
     PROCESSED_PATH, FEATURES_PATH,
     LAG_HOURS, ROLLING_WINDOWS,
     TRAIN_END_DATE, VAL_END_DATE,TEST_START_DATE,
-    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY
+    TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_PREV_TRAIN_DATA,BEST_MODEL_PATH,MODEL_LIST,BEST_MODEL_VER
 )
-from evaluate import Evaluate
+from models.evaluate import Evaluate
+
 
 
 
@@ -28,6 +33,7 @@ from evaluate import Evaluate
 PROJECT_ROOT = Path(__file__).parent.parent
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
 
 
 def create_spark_session()->SparkSession:
@@ -43,34 +49,60 @@ def create_spark_session()->SparkSession:
 
 
 class ModelTrainer:
-    def __init__(self,spark):
+    def __init__(self,spark,version):
         self.spark=spark
         self.best_model={}
         self.baseline={}
-    
+        self.version=version
+        with  open ("models/artifacts/model_version.json","w") as f:
+            json.dump(self.version,f)
+
     
 
 
     def load_data(self,file_path):
+        PATH_PREV_TRAIN_DATA=file_path
         df=self.spark.read.parquet(file_path)
+        
         return df
 
 
-    def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
+    # def split_data_pandas(self,df:ps.DataFrame)->ps.DataFrame:
         
-        df=df.pandas_api()
+    #     df=df.pandas_api()
         
 
-        self.train=df[df.hour_timestamp<TRAIN_END_DATE]
-        self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&(df.hour_timestamp < VAL_END_DATE)]
-        self.test=df[df.hour_timestamp >= TEST_START_DATE]
+    #     self.train=df[df.hour_timestamp<TRAIN_END_DATE]
+    #     self.val=df[(df.hour_timestamp>=TRAIN_END_DATE)&(df.hour_timestamp < VAL_END_DATE)]
+    #     self.test=df[df.hour_timestamp >= TEST_START_DATE]
         
-        assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
-        assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
+    #     assert self.train.hour_timestamp.max() < self.val.hour_timestamp.min()
+    #     assert self.val.hour_timestamp.max() < self.test.hour_timestamp.min()
         
-        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
+    #     print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
         
-        return self.train, self.val, self.test 
+    #     return self.train, self.val, self.test 
+    
+    
+    #alternative to split_data_pandas if there occurs an error because of the data being over 10gb
+    
+        # def split_data(self, df):
+        # """Convert to Pandas once, split, and store as Pandas DataFrames."""
+        # pdf = df.toPandas()
+        # pdf['hour_timestamp'] = pd.to_datetime(pdf['hour_timestamp'])
+        
+        # self.train_pd = pdf[pdf['hour_timestamp'] < TRAIN_END_DATE]
+        # self.val_pd = pdf[(pdf['hour_timestamp'] >= TRAIN_END_DATE) & 
+        #                 (pdf['hour_timestamp'] < VAL_END_DATE)]
+        # self.test_pd = pdf[pdf['hour_timestamp'] >= TEST_START_DATE]
+        
+        # # Store Spark versions too (if needed for other methods)
+        # self.train = self.spark.createDataFrame(self.train_pd)
+        # self.val = self.spark.createDataFrame(self.val_pd)
+        # self.test = self.spark.createDataFrame(self.test_pd)
+        
+        # print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
+        # return self.train, self.val, self.test
 
     
 
@@ -94,9 +126,10 @@ class ModelTrainer:
         self.val_pd = self.val.toPandas()
         self.test_pd = self.test.toPandas()
 
-        print(f"Train: {self.train.shape}, Val: {self.val.shape}, Test: {self.test.shape}")
+        print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
         
-        return self.train, self.val, self.test 
+        
+        return self.train_pd, self.val_pd, self.test_pd 
 
     
    
@@ -167,6 +200,8 @@ class ModelTrainer:
         
         end=(time.perf_counter()-start)*1000
         print(f"model fit in time :{end}")
+        model_path = MODEL_DIR / f"model_v{self.version}.pkl"
+        joblib.dump(self.model, model_path)
 
         
         return self.model
@@ -190,7 +225,7 @@ class ModelTrainer:
         print("fitting the model")
         print("="*60)
 
-        self.model.fit(X_train,y_train,
+        self.quantile_low_model.fit(X_train,y_train,
                        eval_set=[(X_val, y_val)],
         
         callbacks=[early_stopping(100), log_evaluation(100)]
@@ -224,7 +259,7 @@ class ModelTrainer:
         print("fitting the model")
         print("="*60)
 
-        self.model.fit(X_train,y_train,
+        self.quantile_high_model.fit(X_train,y_train,
                        eval_set=[(X_val, y_val)],
         
         callbacks=[early_stopping(100), log_evaluation(100)]
@@ -240,20 +275,80 @@ class ModelTrainer:
         return self.quantile_high_model
 
 
+
+
+    def smape(self,y_true, y_pred, epsilon=1e-10): 
+        y_true = np.array(y_true) 
+        y_pred = np.array(y_pred) 
+        numerator = 2 * np.abs(y_true - y_pred) 
+        denominator = np.abs(y_true) + np.abs(y_pred) + epsilon 
+        smape_value = np.mean(numerator / denominator) * 100 
+        return smape_value
+
     
+    def best_model_selection(self,models:dict):
+        "compare all the metrics across the models and choose the best one"
+        rmse={}
+        mae={}
+        r_square={}
+        smape={}
+        metrics={}
+
+        for k,model in models.items():
+            y_true = self.test_pd['demand']
+            y_pred = model.predict(self.test_pd[FEATURE_COLUMNS])
+            y_pred = np.clip(y_pred,0,None)  
+    
+            # Global metrics
+            MAE  = mean_absolute_error(y_true, y_pred)
+            RMSE = np.sqrt(mean_squared_error(y_true, y_pred))
+            r2 = r2_score(y_true, y_pred)
+            SMAPE=self.smape(y_true=y_true,y_pred=y_pred)
+            rmse[k]=RMSE
+            mae[k]=MAE
+            r_square[k]=r2
+            smape[k]=SMAPE
+        rmse_min=min(rmse.items(),key=lambda x:x[1])
+        mae_min=min(mae.items(),key=lambda x:x[1])
+        r_square_max=max(r_square.items(),key=lambda x:x[1])
+        smape_min=min(smape.items(),key=lambda x:x[1])
+        count=[rmse_min[0],mae_min[0],r_square_max[0],smape_min[0]]
+        count=Counter(count)
+        count=count.most_common(n=1)
+        metrics={'rmse':rmse[count[0][0]],'mae':mae[count[0][0]],'r_square':r_square[count[0][0]],"smape":smape[count[0][0]]}
         
+        
+        
+        return count[0][0],metrics
        
 
     
     
     
-    def save_best_model(self,version):
-        self.version=version
-        model_path = MODEL_DIR / f"lgbm_demand_v{self.version}.pkl"
-        joblib.dump(self.model, model_path)
+    def save_best_model(self,models:dict):
+        "save the best model "
+        try:
+            best_model,metrics=self.best_model_selection(models)
+            print(f"best model is {best_model}")
+            BEST_MODEL_NAME=f"{best_model}"
             
-        with open(MODEL_DIR/"feature_cols.json",'w') as f:
-            json.dump(FEATURE_COLUMNS,f)
+            BEST_MODEL_PATH = MODEL_DIR / f"lgbm_demand_{best_model}_v{self.version}.pkl"
+            joblib.dump(models[best_model], BEST_MODEL_PATH)
+                
+            with open(MODEL_DIR/"feature_cols.json",'w') as f:
+                json.dump(FEATURE_COLUMNS,f)
+            #change file path according to system to save metrics of the best model
+            with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
+                    json.dump(metrics,f)
+            model_metadata={"model_name":best_model,"model_path":BEST_MODEL_PATH,"date_added":datetime.today().strftime("%Y_%m_%d_%H_%M_%S")}
+            with open(MODEL_LIST,"+a") as f:
+                model_list=json.load(f)
+                model_list[BEST_MODEL_VER]=model_metadata
+                json.dump(model_list,f)
+            BEST_MODEL_VER+=1#what if the json.dump fails?how to stop the best_model_num from increasing:have added try block to prevent this,test if it works
+        except Exception as e:
+            return(f"error :{e}")
+        return models[best_model]
         
         
 
@@ -261,11 +356,11 @@ class ModelTrainer:
 
 
 
-    def analyze_feature_importance(self, top_n=20):
+    def analyze_feature_importance(self,model,top_n=20):
         """Show which features matter most."""
         importance_df = pd.DataFrame({
             'feature': FEATURE_COLUMNS,
-            'importance': self.model.feature_importances_
+            'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
         
         print('='*60)
@@ -290,6 +385,7 @@ class ModelTrainer:
 
 
 
+   
 
 
     
@@ -298,21 +394,30 @@ class ModelTrainer:
     def run_complete_pipeline(self):
         """Full training and evaluation pipeline."""
         evaluation=Evaluate()
-        
+    
         # 1. Split data
         print("\n" + "="*60)
         print("  STEP 1: SPLITTING DATA")
         print("="*60)
-        df=self.load_data(PROCESSED_PATH)
+        df=self.load_data(FEATURES_PATH)
         train,val,test=self.split_data(df)
         
         # 2. Baseline
         print("\n" + "="*60)
         print("  STEP 2: BASELINE MODEL")
         print("="*60)
-        baseline_metrics_train = evaluation.baseline_naive_seasonal(self.train,split="train")
-        baseline_metrics_val = evaluation.baseline_naive_seasonal(self.val,split="val")
-        baseline_metrics_test = evaluation.baseline_naive_seasonal(self.test,split="test")
+        baseline_metrics_train = evaluation.baseline_naive_seasonal(train,split="train")
+        baseline_metrics_val = evaluation.baseline_naive_seasonal(val,split="val")
+        baseline_metrics_test = evaluation.baseline_naive_seasonal(test,split="test")
+        print("\n" + "="*60)
+        print("   BASELINE MODEL METRICS")
+        print("\n TRAIN METRICS")
+        print(baseline_metrics_train)
+        print("\n Test METRICS")
+        print(baseline_metrics_test)
+        print("\n VALIDATION METRICS")
+        print(baseline_metrics_val)
+        print("="*60)
         
         # 3. Fine tune hyper parameter of model
         print("\n" + "="*60)
@@ -326,39 +431,48 @@ class ModelTrainer:
         print("\n" + "="*60)
         print("  STEP 4: TRAINING LIGHTGBM")
         print("="*60)
-        self.train_model()
-        self.train_quantile_high_model()
-        self.train_quantile_low_model()
+        model=self.train_model()
+        quantile_low_model=self.train_quantile_low_model()
+        quantile_high_model=self.train_quantile_high_model()
 
         # 5. Evaluate
         print("\n" + "="*60)
         print("  STEP 5: EVALUATION")
         print("="*60)
-        train_metrics=evaluation.evaluate_model(self.train, self.model, 'train')
-        val_metrics=evaluation.evaluate_model(self.val, self.model, 'val')
-        test_metrics = evaluation.evaluate_model(self.test, self.model, 'test')
+        train_metrics=evaluation.evaluate_model(train, model,"base_model", 'train')
+        val_metrics=evaluation.evaluate_model(val, model,"base_model",  'val')
+        test_metrics = evaluation.evaluate_model(test, model,"base_model",  'test')
+        print("="*60)
+        print("EVALUTING QUANTILE LOW MODEL")
+        train_metrics_quantile_low=evaluation.evaluate_model(train, quantile_low_model,"quantile_low_model", 'train')
+        val_metrics_quantile_low=evaluation.evaluate_model(val, quantile_low_model,"quantile_low_model", 'val')
+        test_metrics_quantile_low = evaluation.evaluate_model(test, quantile_low_model,"quantile_low_model", 'test')
+        print("="*60)
+        print("EVALUTING QUANTILE HIGH MODEL")
+        train_metrics_quantile_high=evaluation.evaluate_model(train, quantile_high_model,"quantile_high_model" ,'train')
+        val_metrics_quantile_high=evaluation.evaluate_model(val, quantile_high_model,"quantile_high_model" , 'val')
+        test_metrics_quantile_high = evaluation.evaluate_model(test, quantile_high_model,"quantile_high_model" , 'test')
+
+
+        #save best model and features
+        print("\n" + "="*60)
+        print("  STEP 6:save model and features")
+        print("="*60)
+        chosen_model=self.save_best_model(models={"base_model":model,"quantile_high_model":quantile_high_model,"quantile_low_model":quantile_low_model})
         
         # 5. Feature importance
         print("\n" + "="*60)
-        print("  STEP 5: FEATURE ANALYSIS")
+        print("  STEP 7: FEATURE ANALYSIS")
         print("="*60)
-        importance_df = self.analyze_feature_importance()
+        importance_df = self.analyze_feature_importance(chosen_model["model"])
         
         # 6. Residual analysis
         print("\n" + "="*60)
-        print("  STEP 6: ERROR ANALYSIS")
+        print("  STEP 8: ERROR ANALYSIS")
         print("="*60)
-        evaluation.analyze_residuals(self.test, 'Test')
-
-
-         # 6. Residual analysis
-        print("\n" + "="*60)
-        print("  STEP 7:save model and features")
-        print("="*60)
-        self.save_best_model()
+        evaluation.analyze_residuals(df=test,model=chosen_model, split_name='Test')
+   
         
-        # 7. Save everything
-        self.save_artifacts()
         
         print("\n" + "="*60)
         print("  PIPELINE COMPLETE")
@@ -371,6 +485,23 @@ class ModelTrainer:
             'train metrics':train_metrics,
             'validation_metrics':val_metrics,
             'test metrics': test_metrics,
+            'train metrics quantile low model':train_metrics_quantile_low,
+            'validation_metrics quantile low model':val_metrics_quantile_low,
+            'test metrics quanitle low model': test_metrics_quantile_low,
+            'train metrics quantile high model':train_metrics_quantile_high,
+            'validation_metrics quantile high model':val_metrics_quantile_high,
+            'test metrics quanitle high model': test_metrics_quantile_high,
             'feature importance': importance_df
         }
     
+if __name__=="__main__":
+    print("\n" + "="*60)
+    print("  creating new Spark session")
+    print("="*60)
+    spark=create_spark_session()
+    try:
+        train=ModelTrainer(spark,version=datetime.today().strftime("%Y%m%d_%H%M%S"))
+        train.run_complete_pipeline()
+    finally:
+        spark.stop()
+        print("\n SparkSesssion stopped")
