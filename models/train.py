@@ -29,7 +29,6 @@ from models.evaluate import Evaluate
 
 
 
-
 PROJECT_ROOT = Path(__file__).parent.parent
 MODEL_DIR = PROJECT_ROOT / "models" / "artifacts"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -338,11 +337,11 @@ class ModelTrainer:
             with open(MODEL_DIR/"feature_cols.json",'w') as f:
                 json.dump(FEATURE_COLUMNS,f)
             #change file path according to system to save metrics of the best model
-            with open(f"C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
+            with open(f"Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{best_model}_metrics.json","w")as f:
                     json.dump(metrics,f)
 
 
-            if os.path.exists(MODEL_LIST) or os.path.getsize(model_list)==0:
+            if not os.path.exists(MODEL_LIST) or os.path.getsize(model_list)==0:
                 model_list={}
 
             else:
@@ -351,8 +350,8 @@ class ModelTrainer:
 
                     model_list=json.load(f)
 
-            model_metadata={"model_name":best_model,"model_path":BEST_MODEL_PATH,"date_added":datetime.today().strftime("%Y_%m_%d_%H_%M_%S")}
-            model_list[str(BEST_MODEL_VER)]=model_metadata
+            model_metadata={"model_name":best_model,"model_path":BEST_MODEL_PATH,"date_added":datetime.today().strftime("%Y_%m_%d_%H_%M_%S"),"features":FEATURE_COLUMNS,"engineered_features_path":FEATURES_PATH}
+            model_list[f"V_{BEST_MODEL_VER}"]=model_metadata
 
             with open(MODEL_LIST,"w") as f:
                 

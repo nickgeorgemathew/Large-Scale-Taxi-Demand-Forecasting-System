@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from config.settings import PERFORMANCELOG, MODELCONDITIONLOG,BEST_MODEL_NAME
 from  monitoring.mlops_pipeline import Pipeline as pipeline
-from retraining.model_registry_manager import ModelRegistry 
+from retraining_and_registry.model_registry_manager import ModelRegistry 
 
 def save_log_parquet(log, file_path):
     "file path must be a path that leads to the log file and not just a string"

@@ -3,7 +3,7 @@ from monitoring.drift_detector import DriftDetector,run_drift_pipeline
 from monitoring.metrics_monitor import MetricsMonitor,run_monitor_pipeline
 from monitoring.alert_manager import AlertManager,run_alert_manager_condition,run_alert_manager_trigger_action
 from monitoring.mlops_pipeline import Pipeline,run_mlops_pipeline
-from retraining.model_registry_manager import ModelRegistry 
+from retraining_and_registry.model_registry_manager import ModelRegistry 
 import json
 import subprocess
 import logging
