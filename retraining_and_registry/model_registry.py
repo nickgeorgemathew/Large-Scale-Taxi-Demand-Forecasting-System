@@ -17,11 +17,15 @@ with open(MODEL_LIST,"r+") as f:
 
 model_versions=[k for k,_ in dict.items()]
 
+def metric_improved(current,new):
+    "compare metrics of current model to new model(could also be older model when doing rollback).If the new model has better metrics return true or else false"
 def rollback():
     if PRODUCTION_MODEL_INDEX == model_versions[0]:
         logging.error(msg="only current model present,no model to rollback to ")
     else:
-        if #write a function to compare metrics and return true or false flag:
+        metric_better=
+        if :
+        #write a function to compare metrics and return true or false flag
             
             PRODUCTION_MODEL_INDEX -=1
             BEST_MODEL_NAME=model_list[PRODUCTION_MODEL_INDEX["model_name"]]
