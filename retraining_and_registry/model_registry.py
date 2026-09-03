@@ -13,6 +13,8 @@ from config.settings import MODEL_LIST,BEST_MODEL_PATH,BEST_MODEL_NAME,PRODUCTIO
 import logging
 import json
 from collections import Counter
+
+#add class and functions once logic build 
 with open(MODEL_LIST,"r+") as f:
     model_list=json.load(f)
 
@@ -81,6 +83,7 @@ def rollback(failure:bool=False):
             
 
 def update():
+      #only update manually without checking if the features used to train the model has been changed,this should be done in trigger retraina nd alert manager where it does a feature check with current modela and the feature in the config file,if changed,trigger retrain
       pass
 
 

@@ -15,9 +15,10 @@ def save_log_parquet(log, file_path):
     except FileNotFoundError:
         df_log.to_parquet(Path(file_path), engine="pyarrow")
     return df_log
+model_registry=ModelRegistry()
 
 class AlertManager:
-    model_registry=ModelRegistry()
+    
 
     def log_state(self, flag):
         "log the current state  with metadata"
@@ -44,6 +45,8 @@ class AlertManager:
         feature = [k for k, val in drift_flags.items() if val and k != "residual_drift"]
         residual = [k for k, val in drift_flags.items() if val and k == "residual_drift"]
         return feature, residual
+
+    
 
     def assess_condition(self, performance_flags, drift_flags):
         performance = self.assess_performance(performance_flags)
@@ -80,7 +83,7 @@ class AlertManager:
             
             pipeline.halt_serving(flag=True, reason=severity, timestamp=timestamp)
             pipeline.trigger_retrain(reason=severity)
-            model_registry.rollback()
+            model_registry
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME},
                 

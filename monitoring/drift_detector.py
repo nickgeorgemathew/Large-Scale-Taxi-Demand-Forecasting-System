@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 from pyspark.sql import functions as f
 from config.settings import SPARK_APP_NAME,SPARK_DRIVER_MEMORY,SPARK_SHUFFLE_PARTITIONS
+import json
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as f
-from config.settings import MONITORED_FEATURES,TEST_START_DATE,DATA_START_DATE,DATA_END_DATE,VAL_END_DATE,TRAIN_END_DATE,FEATURES_PATH,RAW_DATA_FORMAT,PATH_PREV_TRAIN_DATA,PROCESSED_PATH
+from config.settings import MONITORED_FEATURES,TEST_START_DATE,DATA_START_DATE,DATA_END_DATE,VAL_END_DATE,TRAIN_END_DATE,FEATURES_PATH,RAW_DATA_FORMAT,PATH_PREV_TRAIN_DATA,PROCESSED_PATH,FEATURE_COLUMNS,MODEL_LIST,PRODUCTION_MODEL_INDEX
 
 def calculate_psi(expected, actual, n_bins=10):
     """Population Stability Index."""
@@ -66,7 +67,27 @@ class DriftDetector:
             print(f"Train: {self.train_pd.shape}, Val: {self.val_pd.shape}, Test: {self.test_pd.shape}")
             
             return self.train_pd, self.val_pd, self.test_pd
-    
+
+    def assess_feature_change(self):
+
+        current=set(FEATURE_COLUMNS)
+        with open(MODEL_LIST,"r+") as f:
+                        
+                        model_list=json.load(f)
+        prod_features=set(model_list[f"V_{PRODUCTION_MODEL_INDEX}"["features"]])
+        added_features = current - prod_features
+        removed_features = prod_features - current
+        
+        is_different = len(added_features) > 0 or len(removed_features) > 0
+        
+        return {
+            "is_different": is_different,
+            "added": list(added_features),
+            "removed": list(removed_features)
+        }
+        
+
+
     def compute_feature_drift(self, training_df, current_df, threshold=0.1):
         feature_flag = {}
         print("train df columns")

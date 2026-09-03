@@ -116,6 +116,120 @@ def CONVERT_CONFIGSETTINGS() :
 
     
 
+#only update production model manually without checking if the features used to train the model has been changed,this should be done in trigger retraina nd alert manager where it does a feature check with current modela and the feature in the config file,if changed,trigger retrain
+def feature_change_logic():
+    pass
+        ## 🔍 1. How to Create the Checking Logic
+        # To compare feature columns, you cannot just check if their lists are equal (list1 == list2) because a change in column order would trigger a false alarm, even if the features are identical.
+        # Instead, convert the feature lists into Python Sets. This allows you to check for exact symmetry, missing features, or entirely new features regardless of order.
+
+        # def check_feature_signature(current_features: list, new_features: list) -> dict:
+        #     """Compares the feature sets of two models.
+        #     Returns a dictionary outlining the drift/changes in columns.
+        #     """
+        #     current_set = set(current_features)
+        #     new_set = set(new_features)
+            
+        #     added_features = new_set - current_set
+        #     removed_features = current_set - new_set
+            
+        #     is_different = len(added_features) > 0 or len(removed_features) > 0
+            
+        #     return {
+        #         "is_different": is_different,
+        #         "added": list(added_features),
+        #         "removed": list(removed_features)
+        #     }
+
+        # ------------------------------
+        # ## ⚠️ 2. Why "Deploying Without Checks" is a Bad Idea
+        # Deploying a model with a changed feature schema directly to production without checks is a massive MLOps hazard. If the feature signature changes, your inference/prediction pipeline (predict.py or your streaming Spark app) will instantly crash or produce completely broken outputs due to a schema mismatch.
+
+        # * Scenario A (Added Features): If the new model requires a new column (e.g., roll_std_24h), your production data pipeline won't be generating it yet. The model will receive a missing column error and throw a ValueError or KeyError.
+        # * Scenario B (Removed Features): If you dropped a feature, your production pipeline might still waste computing power calculating it, or the model server will reject the payload because it contains unexpected data.
+
+        # ------------------------------
+        # ## 🗺️ 3. How to Determine Next Steps (The Decision Matrix)
+        # When a feature change is detected, your automated deployment loop should halt and execute a specialized fallback framework based on what exactly changed:
+
+        #                 [Feature Signature Check]
+        #                             │
+        #                     ┌─────────┴─────────┐
+        #                     ▼                   ▼
+        #             (No Schema Change)    (Schema Changed)
+        #                     │                   │
+        #         [Run Automated Metric]         ▼
+        #             [Guardrail Gates]     [Is Inference Pipeline]
+        #                     │             [Backward-Compatible?]
+        #         ┌──────────┴──────────┐        │
+        #         ▼                     ▼        ├───────────────┐
+        #     (Passed)               (Failed)    ▼ (No)          ▼ (Yes)
+        #         │                     │     [BLOCK Deploy]  [Run Shadow/AB Test]
+        #         ▼                     ▼     [Alert Devs]           │
+        # [Deploy Live]         [Reject Model]                     ▼
+        #                                                     [Update config.yaml]
+        #                                                     [Deploy Live]
+
+        # ## 🛑 Case 1: Features were REMOVED or ADDED (Pipeline Incompatible)
+        # If the feature arrays do not match, you must BLOCK automated production deployment entirely.
+
+        # * What to do: Log a critical warning and send an alert (via Slack, email, or your logging platform).
+        # * Why: The production data preprocessing/Spark loop must be updated to compute these new features before the model can be safely pointed to live data.
+
+        # ## 🔄 Case 2: Features are identical, but the ORDER changed
+        # If is_different is False but the array order changed, you can proceed, but you must ensure your data formatting step aligns the data properly.
+
+        # * What to do: Inside your prediction script, strictly force the inference DataFrame columns to match the model's exact signature order right before calling .predict():
+
+        # # Force input data to match model sequence exactlyinference_df = raw_inference_df[config["features"]["feature_columns"]]
+
+
+        # ## 🧪 Case 3: The engineering team explicitly pushed an updated pipeline
+        # If you deliberately want to deploy a model with a new feature schema, you cannot do it via a fully automated cron loop. It requires a coordinated release:
+
+        # 1. Shadow Deployment / A/B Testing: Spin up a secondary model server instance that processes data with the new feature pipelines, running parallel to the live production model.
+        # 2. Synchronized Update: Update your config.yaml with both the new feature_columns list and the new best_model_path at the exact same moment your streaming/batch feature store pipeline updates its schema.
+
+        # ------------------------------
+        # ## 💻 Step 4: Putting It Together in Your Pipeline
+        # Here is how you integrate this safely into your deployment orchestration function:
+
+        # def evaluate_and_deploy_model(current_model_meta: dict, new_model_meta: dict, eval_config: dict):
+        #     # 1. First, check feature alignment
+        #     feature_report = check_feature_signature(
+        #         current_features=current_model_meta["feature_columns"],
+        #         new_features=new_model_meta["feature_columns"]
+        #     )
+            
+        #     if feature_report["is_different"]:
+        #         print(f"🚨 CRITICAL BLOCK: Cannot auto-deploy. Feature schema has changed!")
+        #         print(f"Added features: {feature_report['added']}")
+        #         print(f"Removed features: {feature_report['removed']}")
+        #         print("Halting deployment loop. A software engineer must update the ETL pipeline first.")
+        #         return False
+                
+        #     # 2. If features align perfectly, it is safe to proceed to metric validation
+        #     print("✅ Feature schemas match. Proceeding to metric guardrail analysis...")
+            
+        #     current_metrics = current_model_meta["metrics"]
+        #     new_metrics = new_model_meta["metrics"]
+            
+        #     is_safe = metric_improved_with_gate(current_metrics, new_metrics, eval_config)
+            
+        #     if is_safe:
+        #         # Update config.yaml using your ruamel.yaml wrapper safely
+        #         update_production_model_on_disk(new_model_meta)
+        #         return True
+                
+        #     return False
+
+        # ------------------------------
+        # To tailor this precisely to your project's architecture, tell me:
+
+        # * Where are your inference scripts (predict.py or your serving API) getting their feature columns from? Are they pulling them directly from config.yaml at runtime?
+        # * When you run your feature engineering pipeline, does it save the features to a central feature store file where both your training script and inference script can access the same column definitions?
+
+
 
 def model_registry():
     #improved logic as shown here,shud update to primary_guardrail logic soon
