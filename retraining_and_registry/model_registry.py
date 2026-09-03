@@ -8,7 +8,7 @@
 
 
 """Template/basic layout of the registry with template for working and basic logics and scaffolding......to build on top off,upgrade and fix"""
-
+"""production_index determines which model is used in production"""
 from config.settings import MODEL_LIST,BEST_MODEL_PATH,BEST_MODEL_NAME,PRODUCTION_MODEL_INDEX
 import logging
 import json
@@ -17,19 +17,39 @@ with open(MODEL_LIST,"r+") as f:
 
 model_versions=[k for k,_ in dict.items()]
 
+def get_metrics(model_name):
+    with open(f"Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{model_name}_metrics.json","w")as f:
+                        model_metrics=json.load(f)
+                        return model_metrics
+
+
 def metric_improved(current,new):
     "compare metrics of current model to new model(could also be older model when doing rollback).If the new model has better metrics return true or else false"
+    points=[]#compare metrics and return name of which model is better,whichever model has the most points is checked,if it is the current the flag will be false,else it will be true
+    current["rmse"]new["rmse"]
+
+
+
+    
 def rollback():
     if PRODUCTION_MODEL_INDEX == model_versions[0]:
         logging.error(msg="only current model present,no model to rollback to ")
     else:
-        metric_better=
-        if :
+        current=model_list[model_versions[PRODUCTION_MODEL_INDEX]]
+        prev=model_list[model_versions[PRODUCTION_MODEL_INDEX-1]]
+        current_name=current["model_name"]
+        prev_name=prev["model_name"]
+        current_metrics=get_metrics(model_name=current_name)
+        prev_metrics=get_metrics(model_name=prev_name)
+        improvement= metric_improved(current=current_metrics,new=prev_metrics)
+        if improvement:
         #write a function to compare metrics and return true or false flag
-            
-            PRODUCTION_MODEL_INDEX -=1
-            BEST_MODEL_NAME=model_list[PRODUCTION_MODEL_INDEX["model_name"]]
-            BEST_MODEL_PATH=model_list[PRODUCTION_MODEL_INDEX["model_path"]]
+            try:
+                PRODUCTION_MODEL_INDEX -=1
+                BEST_MODEL_NAME=model_list[PRODUCTION_MODEL_INDEX["model_name"]]
+                BEST_MODEL_PATH=model_list[PRODUCTION_MODEL_INDEX["model_path"]]
+            except:
+                  pass
             
 
 
