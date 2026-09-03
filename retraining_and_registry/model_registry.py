@@ -12,22 +12,38 @@
 from config.settings import MODEL_LIST,BEST_MODEL_PATH,BEST_MODEL_NAME,PRODUCTION_MODEL_INDEX
 import logging
 import json
+from collections import Counter
 with open(MODEL_LIST,"r+") as f:
     model_list=json.load(f)
 
 model_versions=[k for k,_ in dict.items()]
 
 def get_metrics(model_name):
-    with open(f"Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{model_name}_metrics.json","w")as f:
-                        model_metrics=json.load(f)
-                        return model_metrics
+    try:
+        with open(f"Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{model_name}_metrics.json","w")as f:
+                            model_metrics=json.load(f)
+                            return model_metrics
+    except FileNotFoundError:
+          return("model name is wrong or metric file has been deleted check name and location")
 
 
 def metric_improved(current,new):
     "compare metrics of current model to new model(could also be older model when doing rollback).If the new model has better metrics return true or else false"
-    points=[]#compare metrics and return name of which model is better,whichever model has the most points is checked,if it is the current the flag will be false,else it will be true
-    current["rmse"]new["rmse"]
+    #note:should update to the primary metric and guardrail setup,dev-docs ->todo.py->metric_logic() has code for this
+    rmse="new" if new["rmse"] < current["rmse"] else "current"
+    mae= "new" if new["mae"] < current["mae"] else "current"
+    smape="new" if new["smape"] < current["smape"] else "current"
+    r_square="new" if new["r2"] > current["r2"] else "current"  # Higher R2 is better
 
+    
+
+    votes=[rmse,mae,smape,r_square]
+    count=Counter(votes)
+    
+    if count["new"]>count["current"]:
+          return True
+
+    return False
 
 
     

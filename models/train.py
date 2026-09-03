@@ -287,6 +287,7 @@ class ModelTrainer:
     
     def best_model_selection(self,models:dict):
         "compare all the metrics across the models and choose the best one"
+        #note:should update to the primary metric and guardrail setup,dev-docs ->todo.py has code for this
         rmse={}
         mae={}
         r_square={}
