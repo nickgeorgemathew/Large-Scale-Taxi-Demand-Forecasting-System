@@ -47,27 +47,40 @@ def metric_improved(current,new):
 
 
     
-def rollback():
-    if PRODUCTION_MODEL_INDEX == model_versions[0]:
-        logging.error(msg="only current model present,no model to rollback to ")
+def rollback(failure:bool=False):
+    if failure:
+          try:
+              PRODUCTION_MODEL_INDEX -=1
+              BEST_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+              BEST_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+              return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+          except Exception as e:
+                return f"error:{e}"
     else:
-        current=model_list[model_versions[PRODUCTION_MODEL_INDEX]]
-        prev=model_list[model_versions[PRODUCTION_MODEL_INDEX-1]]
-        current_name=current["model_name"]
-        prev_name=prev["model_name"]
-        current_metrics=get_metrics(model_name=current_name)
-        prev_metrics=get_metrics(model_name=prev_name)
-        improvement= metric_improved(current=current_metrics,new=prev_metrics)
-        if improvement:
-        #write a function to compare metrics and return true or false flag
-            try:
-                PRODUCTION_MODEL_INDEX -=1
-                BEST_MODEL_NAME=model_list[PRODUCTION_MODEL_INDEX["model_name"]]
-                BEST_MODEL_PATH=model_list[PRODUCTION_MODEL_INDEX["model_path"]]
-            except:
-                  pass
+          
+        if f"V_{PRODUCTION_MODEL_INDEX}" == model_versions[0]:
+            logging.error(msg="only current model present,no model to rollback to ")
+        else:
+            current=model_list[model_versions[PRODUCTION_MODEL_INDEX]]
+            prev=model_list[model_versions[PRODUCTION_MODEL_INDEX-1]]
+            current_name=current["model_name"]
+            prev_name=prev["model_name"]
+            current_metrics=get_metrics(model_name=current_name)
+            prev_metrics=get_metrics(model_name=prev_name)
+            improvement= metric_improved(current=current_metrics,new=prev_metrics)
+            if improvement:
+            
+                try:
+                    PRODUCTION_MODEL_INDEX -=1
+                    BEST_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+                    BEST_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+                    return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+                except Exception as e:
+                    return f"error:{e}"
+                  
             
 
-
+def update():
+      pass
 
 

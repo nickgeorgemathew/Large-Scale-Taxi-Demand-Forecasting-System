@@ -276,6 +276,7 @@ def model_registry():
 
 
     def rollback_logic():
+        #
         pass
     def update_logic():
         pass
