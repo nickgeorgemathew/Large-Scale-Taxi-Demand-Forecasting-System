@@ -9,7 +9,7 @@
 
 """Template/basic layout of the registry with template for working and basic logics and scaffolding......to build on top off,upgrade and fix"""
 """production_index determines which model is used in production"""
-from config.settings import MODEL_LIST,BEST_MODEL_PATH,BEST_MODEL_NAME,PRODUCTION_MODEL_INDEX
+from config.settings import MODEL_LIST,PROD_MODEL_PATH,PROD_MODEL_NAME,PRODUCTION_MODEL_INDEX,BEST_MODEL_VER
 import logging
 import json
 from collections import Counter
@@ -53,8 +53,8 @@ def rollback(failure:bool=False):
     if failure:
           try:
               PRODUCTION_MODEL_INDEX -=1
-              BEST_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
-              BEST_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+              PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+              PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
               return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
           except Exception as e:
                 return f"error:{e}"
@@ -74,16 +74,45 @@ def rollback(failure:bool=False):
             
                 try:
                     PRODUCTION_MODEL_INDEX -=1
-                    BEST_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
-                    BEST_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+                    PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+                    PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
                     return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
                 except Exception as e:
                     return f"error:{e}"
                   
             
 
-def update():
+def update(manual:bool=False,):
       #only update manually without checking if the features used to train the model has been changed,this should be done in trigger retraina nd alert manager where it does a feature check with current modela and the feature in the config file,if changed,trigger retrain
-      pass
+      if manual:
+           try:
+               PRODUCTION_MODEL_INDEX = BEST_MODEL_VER
+               PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+               PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+               return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+           except Exception as e:
+                 return f"error:{e}"
+      else:
+      
+         if f"V_{PRODUCTION_MODEL_INDEX}" == model_versions[0]:
+             logging.error(msg="only current model present,no model to rollback to ")
+         else:
+             current=model_list[model_versions[PRODUCTION_MODEL_INDEX]]
+             prev=model_list[model_versions[PRODUCTION_MODEL_INDEX-1]]
+             current_name=current["model_name"]
+             prev_name=prev["model_name"]
+             current_metrics=get_metrics(model_name=current_name)
+             prev_metrics=get_metrics(model_name=prev_name)
+             improvement= metric_improved(current=current_metrics,new=prev_metrics)
+             if improvement:
+      
+                 try:
+                     PRODUCTION_MODEL_INDEX = BEST_MODEL_VER
+                     PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+                     PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+                     return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+                 except Exception as e:
+                     return f"error:{e}"
+      
 
 

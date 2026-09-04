@@ -12,3 +12,8 @@
     created a simple voting system based logic for model_registry.metric_improved.
     created logic for rollback where it checks for if there is a model to rollback to first,if present it will compare the metrics of the current model to the prev one....if improvements are detected it will roll back...incase the model had some other failure and prev model is required a flag is passed to the rollback function which manually rollback to the previous model without comparing metrics.
     Built a simple logic for checking for feature change in monitoring.drift_detector.asses_feature_change,shud setup rest of the project to align with the downstream effects of feature change,especially in modelops and registry
+
+4-09-26
+        created new variables to store current prod model name and path.
+        Added update logic to model registry where the Production model is updated to the best model ver which holds the index for the latest best model
+        
