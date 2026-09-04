@@ -100,6 +100,7 @@ def get_prev_model(registry:bool=True,model_data:bool=False):
 
 #should build a feature to prevent race condition and deadlock:only one function from this shud run at a time
 def rollback(failure:bool=False):
+    """rollback the prod model to the previous model,pass failure as true if model needs to be updated to prod without metric checks"""
     if failure:
           try:
             prev_model=PRODUCTION_MODEL_INDEX
@@ -140,7 +141,8 @@ def rollback(failure:bool=False):
                   
             
 
-def update(manual:bool=False,):
+def update(manual:bool=False):
+      """update the prod model to the latest model,pass manual as true if model needs to be updated to prod without metric checks"""
       #only update manually without checking if the features used to train the model has been changed,this should be done in trigger retraina nd alert manager where it does a feature check with current modela and the feature in the config file,if changed,trigger retrain
       if manual:
            try:
