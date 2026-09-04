@@ -9,10 +9,12 @@
 
 """Template/basic layout of the registry with template for working and basic logics and scaffolding......to build on top off,upgrade and fix"""
 """production_index determines which model is used in production"""
-from config.settings import MODEL_LIST,PROD_MODEL_PATH,PROD_MODEL_NAME,PRODUCTION_MODEL_INDEX,BEST_MODEL_VER
+from config.settings import MODEL_LIST,PROD_MODEL_PATH,PROD_MODEL_NAME,PRODUCTION_MODEL_INDEX,BEST_MODEL_VER,REGISTRY_PATH,REGISTRY_INDEX
 import logging
 import json
+from datetime import datetime
 from collections import Counter
+import os
 
 #add class and functions once logic build 
 with open(MODEL_LIST,"r+") as f:
@@ -21,6 +23,7 @@ with open(MODEL_LIST,"r+") as f:
 model_versions=[k for k,_ in dict.items()]
 
 def get_metrics(model_name):
+    """get metrics for a model,pass model name as args"""
     try:
         with open(f"Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/{model_name}_metrics.json","w")as f:
                             model_metrics=json.load(f)
@@ -47,15 +50,67 @@ def metric_improved(current,new):
 
     return False
 
+def get_all_models():
+     "return the list of all models saved so far with all their metadata"
+     return model_list
+     
 
+def ensure_registry_exist():
+    """ensures if the Registry json file exist, if it does not, create  new one """
+    registry={}
+    if not os.path.exists(REGISTRY_PATH):
+        REGISTRY_PATH.mkdir(parents=True,exist_ok=True)
+        registry[REGISTRY_INDEX]={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"update","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":None,"prev_model_name":None,"prev_model_path":None}
+        with open(REGISTRY_PATH,"w") as f:
+             json.dump(registry,f)
+        print("registry created")
+        REGISTRY_INDEX+=1
+        return(registry)
+    else:
+         return("registry exists")
+
+#how do i ensure the varaibles of prod in config.settings and the entries in the registry.json is concurrent and right??
+def get_prod_model():
+     "Return production model name,path and index"
+     return ({"Model_name":PROD_MODEL_NAME,"Model_path":PROD_MODEL_PATH,"Model_index":PRODUCTION_MODEL_INDEX})
+     
+ 
+#how do i prevent race condition for Registry Index
+def update_registry(data):
+    "updates the registry"
+    try:
+        with open(REGISTRY_PATH,"r+") as f:
+            registry=json.load(f)
+        registry[REGISTRY_INDEX]=data
+        with open(REGISTRY_PATH,"w") as f:
+            json.dump(registry)
+        REGISTRY_INDEX+=1
+        return("registry updated")
+    except Exception as e:
+         return(f"error:{e}")
     
+
+def get_prev_model(registry:bool=True,model_data:bool=False):
+     pass
+     
+     
+#the registry json file shud contain the history of the prod models with their names,path adn whether it was a roll back or a promotion with date.each time rollback or update runs it shud update the registry json file with these details
+
+#if the new model index is further then the roll back say rollback index is 3 prev model was 4 and new model is 5 how do i ensure that the index doesnot update to 4 when new model is updated but instead falls into 5
+
+#should build a feature to prevent race condition and deadlock:only one function from this shud run at a time
 def rollback(failure:bool=False):
     if failure:
           try:
-              PRODUCTION_MODEL_INDEX -=1
-              PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
-              PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
-              return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+            prev_model=PRODUCTION_MODEL_INDEX
+            PRODUCTION_MODEL_INDEX -=1
+            PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
+            PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+            
+            data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"manual rollback","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
+            update_registry(data)
+            return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+          
           except Exception as e:
                 return f"error:{e}"
     else:
@@ -73,9 +128,12 @@ def rollback(failure:bool=False):
             if improvement:
             
                 try:
+                    prev_model=PRODUCTION_MODEL_INDEX
                     PRODUCTION_MODEL_INDEX -=1
                     PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
                     PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+                    data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"automated rollback","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
+                    update_registry(data)
                     return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
                 except Exception as e:
                     return f"error:{e}"
@@ -86,9 +144,12 @@ def update(manual:bool=False,):
       #only update manually without checking if the features used to train the model has been changed,this should be done in trigger retraina nd alert manager where it does a feature check with current modela and the feature in the config file,if changed,trigger retrain
       if manual:
            try:
+               prev_model=PRODUCTION_MODEL_INDEX
                PRODUCTION_MODEL_INDEX = BEST_MODEL_VER
                PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
                PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+               data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"manual update","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
+               update_registry(data)
                return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
            except Exception as e:
                  return f"error:{e}"
@@ -107,9 +168,12 @@ def update(manual:bool=False,):
              if improvement:
       
                  try:
+                     prev_model=PRODUCTION_MODEL_INDEX
                      PRODUCTION_MODEL_INDEX = BEST_MODEL_VER
                      PROD_MODEL_NAME=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_name"]]
                      PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
+                     data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"automated update","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
+                     update_registry(data)
                      return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
                  except Exception as e:
                      return f"error:{e}"

@@ -386,7 +386,19 @@ def model_registry():
 
 
 
+    def get_all_models():
+     
 
+    def ensure_registry_exist():
+
+
+    def get_prod_model():
+
+
+
+    def update_registry():
+
+    def get_prev_model():
 
 
     def rollback_logic():

@@ -14,6 +14,13 @@
     Built a simple logic for checking for feature change in monitoring.drift_detector.asses_feature_change,shud setup rest of the project to align with the downstream effects of feature change,especially in modelops and registry
 
 4-09-26
-        created new variables to store current prod model name and path.
-        Added update logic to model registry where the Production model is updated to the best model ver which holds the index for the latest best model
-        
+        created new variables in config.settings to store current prod model name and path.
+        Added update/promote logic to model registry where the Production model is updated to the best model ver which holds the index for the latest best model.
+        created a function to return all the models.
+        created a function to ensure registry exists and to create incase it does not.
+        created a function to return current prod model name path and index
+        created a variable in config.settings to store the current key in the registry,json
+        created a funciton that is used to update the registry each time rollback or update is called.
+        added logic to update registry when an action occurs
+
+
