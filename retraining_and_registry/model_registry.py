@@ -91,7 +91,23 @@ def update_registry(data):
     
 
 def get_prev_model(registry:bool=True,model_data:bool=False):
-     pass
+        """get all previous models used in prod and saved,pass registry true if only registry data is required,model_data if model data is required"""
+        if registry and model_data :
+            with open(MODEL_LIST,"r") as f:
+                model_list=json.load(f)
+            with open(REGISTRY_PATH,"r") as f:
+                registry_data=json.load(f)
+            return({"model_list":model_list,"registry":registry_data})
+        elif registry:
+             with open(REGISTRY_PATH,"r") as f:
+                 registry_data=json.load(f)
+             return({"registry":registry_data})
+        elif model_data:
+             with open(MODEL_LIST,"r") as f:
+                 model_list=json.load(f)
+             return({"model_list":model_list})
+             
+
      
      
 #the registry json file shud contain the history of the prod models with their names,path adn whether it was a roll back or a promotion with date.each time rollback or update runs it shud update the registry json file with these details

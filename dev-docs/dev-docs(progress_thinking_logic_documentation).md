@@ -21,6 +21,7 @@
         created a function to return current prod model name path and index
         created a variable in config.settings to store the current key in the registry,json
         created a funciton that is used to update the registry each time rollback or update is called.
-        added logic to update registry when an action occurs
+        added logic to update registry when an action occurs.
+        created function to return registry or model_list to view all previous models
 
 
