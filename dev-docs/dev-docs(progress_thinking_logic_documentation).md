@@ -33,4 +33,6 @@
 
         rollback and update calls monitoring.modelops.manualactions.halt_serving to restart the paused serving again
 
+        changed config.settings.py into a yaml file to fix logical errors and improve portability and use congif.settings as the engine to run it.
+
 
