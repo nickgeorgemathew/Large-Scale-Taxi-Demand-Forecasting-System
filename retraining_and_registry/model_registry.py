@@ -15,7 +15,11 @@ import json
 from datetime import datetime
 from collections import Counter
 import os
+from monitoring.modelops_pipeline import ModelopsPipeline
 
+
+modleops=ModelopsPipeline()
+manual_mlops=modleops.ManualMlopsActions()
 #add class and functions once logic build 
 with open(MODEL_LIST,"r+") as f:
     model_list=json.load(f)
@@ -126,7 +130,9 @@ def rollback(failure:bool=False):
             
             data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"manual rollback","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
             update_registry(data)
+            manual_mlops.halt_serving(roll_back=False,flag=False)
             return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
+            
           
           except Exception as e:
                 return f"error:{e}"
@@ -151,6 +157,7 @@ def rollback(failure:bool=False):
                     PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
                     data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"automated rollback","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
                     update_registry(data)
+                    manual_mlops.halt_serving(roll_back=False,flag=False)
                     return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
                 except Exception as e:
                     return f"error:{e}"
@@ -168,6 +175,7 @@ def update(manual:bool=False):
                PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
                data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"manual update","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
                update_registry(data)
+               manual_mlops.halt_serving(roll_back=False,flag=False)
                return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
            except Exception as e:
                  return f"error:{e}"
@@ -192,6 +200,7 @@ def update(manual:bool=False):
                      PROD_MODEL_PATH=model_list[f"V_{PRODUCTION_MODEL_INDEX}"["model_path"]]
                      data={"Version":PRODUCTION_MODEL_INDEX,"prod":True,"model_name":PROD_MODEL_NAME,"model_path":PROD_MODEL_PATH,"action":"automated update","date":datetime.today().strftime("%d/%m/%Y, %H:%M:%S"),"prev_model_index":prev_model,"prev_model_name":model_list[f"V_{prev_model}"["model_name"]],"prev_model_path":model_list[f"V_{prev_model}"["model_path"]]}
                      update_registry(data)
+                     manual_mlops.halt_serving(roll_back=False,flag=False)
                      return(f"model rolled back to {model_list[PRODUCTION_MODEL_INDEX["model_name"]]} ,version/index:{PRODUCTION_MODEL_INDEX}")
                  except Exception as e:
                      return f"error:{e}"

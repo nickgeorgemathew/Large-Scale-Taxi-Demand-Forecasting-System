@@ -31,5 +31,6 @@
         train.py updates the best model to prod and updates best_model_ver.
         mdoel_registry.update updates the model to prod without check if the model is the first one trained and saved
 
+        rollback and update calls monitoring.modelops.manualactions.halt_serving to restart the paused serving again
 
 

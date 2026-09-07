@@ -3,7 +3,7 @@ from monitoring.drift_detector import DriftDetector,run_drift_pipeline
 from monitoring.metrics_monitor import MetricsMonitor,run_monitor_pipeline
 from monitoring.alert_manager import AlertManager,run_alert_manager_condition,run_alert_manager_trigger_action
 from monitoring.mlops_pipeline import Pipeline,run_mlops_pipeline
-from retraining_and_registry.model_registry_manager import ModelRegistry 
+from retraining_and_registry import model_registry
 import json
 import subprocess
 import logging
@@ -46,7 +46,7 @@ class ModelopsPipeline:
 
             
         @staticmethod
-        def halt_serving(flag: bool, reason: str, timestamp: datetime):
+        def halt_serving(roll_back:bool,flag: bool, reason: str, timestamp: datetime):
             """Stop or resume serving predictions."""
             halted = {
                 "serving_halted": flag,
@@ -55,7 +55,8 @@ class ModelopsPipeline:
             }
             with open(SERVING_HALTED, "w") as f:
                 json.dump(halted, f, indent=2)
-            model_registry.rollback()
+            if roll_back:
+                model_registry.rollback()
         @staticmethod
         def trigger_retrain( reason: str = "unspecified"):
             """Asynchronously trigger retraining with a lock to prevent concurrent runs."""
