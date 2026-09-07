@@ -25,3 +25,11 @@
         created function to return registry or model_list to view all previous models
 
 
+7-09-26
+        adding the asses feature change function into the monitoring pipeline.
+        added new flag and when falg is true alert manager will trigger serving halt and trigger retraining.
+        train.py updates the best model to prod and updates best_model_ver.
+        mdoel_registry.update updates the model to prod without check if the model is the first one trained and saved
+
+
+

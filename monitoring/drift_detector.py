@@ -69,6 +69,7 @@ class DriftDetector:
             return self.train_pd, self.val_pd, self.test_pd
 
     def assess_feature_change(self):
+        """check if the feature list used to train the model has changed and return feature_change_flag and changed_features"""
 
         current=set(FEATURE_COLUMNS)
         with open(MODEL_LIST,"r+") as f:
@@ -79,12 +80,13 @@ class DriftDetector:
         removed_features = prod_features - current
         
         is_different = len(added_features) > 0 or len(removed_features) > 0
-        
-        return {
-            "is_different": is_different,
+        feature_change_flag=is_different
+        changed_features={
+            
             "added": list(added_features),
             "removed": list(removed_features)
         }
+        return feature_change_flag,changed_features
         
 
 
@@ -125,7 +127,7 @@ class DriftDetector:
 
 
 def run_drift_pipeline():
-    "Runs DriftDetector pipeline and returns drift_flag,feature_drift_flag and residual_drift_flag "
+    "Runs DriftDetector pipeline and returns drift_flag,feature_drift_flag,residual_drift_flag,feature_change_flag and changed_features "
     spark=create_spark_session()
     detector=DriftDetector(spark=spark)
     prev_df=detector.load_data(PATH_PREV_TRAIN_DATA)
@@ -150,4 +152,13 @@ def run_drift_pipeline():
     print("drift_flag")
     print("===="*60)
     print(drift_flag)
-    return drift_flag,feature_drift_flag,residual_drift_flag
+    feature_change_flag,changed_features=detector.assess_feature_change()
+    print("===="*60)
+    print("feature_change_flag")
+    print("===="*60)
+    print(feature_change_flag)
+    print("===="*60)
+    print("changed_features")
+    print("===="*60)
+    print(changed_features)
+    return drift_flag,feature_drift_flag,residual_drift_flag,feature_change_flag,changed_features

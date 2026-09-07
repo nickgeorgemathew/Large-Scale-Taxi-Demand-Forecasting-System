@@ -3,7 +3,7 @@
 #should be able to see when the model was promoted,trained,its hyper parameters,metrics and other meta data
 #should not have race condition because one process chose to promote and another chose to rollback
 #if there is no model to rollback and roll back is called it should return the lack of model
-#datastructure to show models and wtheir respective metadata + what wud the complexity cost be
+#datastructure to show models and with their respective metadata + what wud the complexity cost be
 #when promote is called to make  a new model the production one, it should pass the benchmark of being better than the current model or else should not be promoted to production
 
 
@@ -183,7 +183,7 @@ def update(manual:bool=False):
              current_metrics=get_metrics(model_name=current_name)
              prev_metrics=get_metrics(model_name=prev_name)
              improvement= metric_improved(current=current_metrics,new=prev_metrics)
-             if improvement:
+             if improvement or f"V_{PRODUCTION_MODEL_INDEX}" == model_versions[0]:
       
                  try:
                      prev_model=PRODUCTION_MODEL_INDEX

@@ -24,6 +24,7 @@ from config.settings import (
     TARGET_COLUMN, FEATURE_COLUMNS,SPARK_APP_NAME, SPARK_SHUFFLE_PARTITIONS, SPARK_DRIVER_MEMORY,PATH_PREV_TRAIN_DATA,BEST_MODEL_PATH,MODEL_LIST,BEST_MODEL_VER
 )
 from models.evaluate import Evaluate
+from retraining_and_registry import model_registry
 
 
 
@@ -357,8 +358,10 @@ class ModelTrainer:
             with open(MODEL_LIST,"w") as f:
                 
                 json.dump(model_list,f,indent=4)
+            model_registry.update()
+            
             BEST_MODEL_VER+=1
-
+            
         except Exception as e:
             return f"error :{e}"
         return models[best_model]

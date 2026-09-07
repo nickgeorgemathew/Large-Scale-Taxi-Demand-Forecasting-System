@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from config.settings import PERFORMANCELOG, MODELCONDITIONLOG,BEST_MODEL_NAME
 from  monitoring.mlops_pipeline import Pipeline as pipeline
-from retraining_and_registry.model_registry_manager import ModelRegistry 
+from retraining_and_registry import model_registry
 
 def save_log_parquet(log, file_path):
     "file path must be a path that leads to the log file and not just a string"
@@ -15,7 +15,7 @@ def save_log_parquet(log, file_path):
     except FileNotFoundError:
         df_log.to_parquet(Path(file_path), engine="pyarrow")
     return df_log
-model_registry=ModelRegistry()
+
 
 class AlertManager:
     
@@ -48,14 +48,19 @@ class AlertManager:
 
     
 
-    def assess_condition(self, performance_flags, drift_flags):
+    def assess_condition(self, performance_flags, drift_flags,feature_change_flag):
         performance = self.assess_performance(performance_flags)
         feature, residual = self.assess_drift(drift_flags)
 
         condition_flags = {"severity": "", "action": ""}
 
-        if performance and feature and residual:
-            condition_flags.update(severity="CRITICAL", action="RETRAIN MODEL IMMEDIATELY ! ROLLBACK")
+        
+        if feature_change_flag:
+            condition_flags.update(severity="CRITICAL FEATURE CHANGE", action="TRAIN  NEW MODEL IMMEDIATELY ! FEATURES HAS CHANGED!! ")
+
+        elif performance and feature and residual:
+                    condition_flags.update(severity="CRITICAL", action="RETRAIN MODEL IMMEDIATELY ! ROLLBACK")
+
         elif not performance and not feature and not residual:
             condition_flags.update(severity="OK", action="NONE")
         elif performance and feature:
@@ -83,13 +88,24 @@ class AlertManager:
             
             pipeline.halt_serving(flag=True, reason=severity, timestamp=timestamp)
             pipeline.trigger_retrain(reason=severity)
-            model_registry
+            model_registry.rollback()
             self.model_condition_log(
                 {"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME},
                 
             )
             current_state={"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME,"actions_triggered":"halt_serving() and trigger_retrain(),model_registry.roll_back()"}
             return current_state
+
+        elif severity=="CRITICAL FEATURE CHANGE":
+            pipeline.halt_serving(flag=True, reason=severity, timestamp=timestamp)
+            pipeline.trigger_retrain(reason=severity)
+            self.model_condition_log(
+                {"severity": severity, "action": action, "model_state": "ROLLED_BACK","model": BEST_MODEL_NAME},
+                
+            )
+            current_state={"severity": severity, "action": action, "model_state": "serving halted","model": BEST_MODEL_NAME,"actions_triggered":"halt_serving() and trigger_retrain()"}
+            return current_state
+
         elif severity == "RETRAIN":
             pipeline.trigger_retrain(reason=severity)
             self.model_condition_log(
@@ -120,12 +136,13 @@ class AlertManager:
             )
             current_state= {"severity": severity, "action": "NONE", "model_state": "HEALTHY"}
             return current_state
-def run_alert_manager_condition(drift_flag,performance_flag):
+
+def run_alert_manager_condition(drift_flag,performance_flag,feature_change_flag):
     "Runs AlertManager pipeline and returns condition_flag  "
     alert=AlertManager()
-    condition_flag=alert.assess_condition(performance_flag,drift_flag)
-    trigger_action=alert.trigger_action(condition_flag)
-    return condition_flag,trigger_action
+    condition_flag=alert.assess_condition(performance_flag,drift_flag,feature_change_flag)
+    
+    return condition_flag
 
 def run_alert_manager_trigger_action(condition_flag):
     "Runs AlertManager pipeline and runs trigger_action() to trigger mlops actions  "

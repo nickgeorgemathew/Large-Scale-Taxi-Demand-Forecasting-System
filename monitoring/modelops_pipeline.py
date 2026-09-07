@@ -23,15 +23,15 @@ class ModelopsPipeline:
 
     @staticmethod
     def model_metrics_drift():
-        "get the metrics and drift/residuals of the model and return performance_flag,metric_week,metric_24,drift_flag,feature_drift_flag,residual_drift_flag"
+        "get the metrics and drift/residuals of the model and return performance_flag,metric_week,metric_24,drift_flag,feature_drift_flag,residual_drift_flag,feature_change_flag,changed_features"
         performance_flag,metric_week,metric_24=run_monitor_pipeline()
-        drift_flag,feature_drift_flag,residual_drift_flag=run_drift_pipeline()
-        return performance_flag,metric_week,metric_24,drift_flag,feature_drift_flag,residual_drift_flag
+        drift_flag,feature_drift_flag,residual_drift_flag,feature_change_flag,changed_features=run_drift_pipeline()
+        return performance_flag,metric_week,metric_24,drift_flag,feature_drift_flag,residual_drift_flag,feature_change_flag,changed_features
 
     @staticmethod
-    def model_health(drift_flag,performance_flag):
+    def model_health(drift_flag,performance_flag,feature_change_flag):
         "get the health/condition of the model and return confition_flag"
-        condition_flag=run_alert_manager_condition(drift_flag,performance_flag)
+        condition_flag=run_alert_manager_condition(drift_flag,performance_flag,feature_change_flag)
         return condition_flag
 
 
