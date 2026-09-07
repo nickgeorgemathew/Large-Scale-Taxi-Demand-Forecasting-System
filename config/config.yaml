@@ -65,26 +65,26 @@ Paths:
   MAX_FARE: 1777 #max fare to prevent outliers
   MIN_DISTANCE: 0.7 # to prevent outliers
   MAX_DISTANCE: 286259.84 # to prevent outliers
-  MIN_PASSENGER=1.0 # to prevent outliers
-  MAX_PASSENGER=8.0# to prevent outliers
-  DATA_START_DATE="2022-03-01" #find from dataset
-  DATA_END_DATE="2022-03-31"#find from dataset
-  TIME_GRANULARITY="hour"#the string you pass to date_trunc that tells it what unit to round down to.
-  FILL_MISSING_ZEROS=False#true or false flag that tells the spark_pipeine to fill the missing zeros if true and not if false
-  SPARK_APP_NAME="Taxi-Demand-Forecasting"#name of the spark app when it is initialised
-  SPARK_SHUFFLE_PARTITIONS="200"#used here.config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS),find why
-  SPARK_DRIVER_MEMORY="4g"# used here spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]").config("spark.driver.memory",SPARK_DRIVER_MEMORY) find why
-  LOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/log/log.parquet")#file location for storing parquet logs
-  METRICLOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/metric_log/metric_log.parquet") #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
-  MODELCONDITIONLOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/performance_log/model_performance_log.parquet")
-  PERFORMANCELOG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/performance_log/performance_log.parquet")# LOG THE PERFORMANCE ISSUES LIKE FEATURE DRIFT,METRIC DEGRADATION ETC WITH TIMESTAMP IN THIS LOCATION 
-  MODEL_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/model")#path of where the model is stored
-  QUANTILE_LOW_MODEL_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/quantile_low_model")#path of where the model is stored
-  QUANTILE_HIGH_MODEL_PATH=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/quantile_high_model")#path of where the model is stored
-  HOTSPOTS=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/log/hotspots/hotspots.parquet")#file path where to store the hotspots
-  RECENT_HISTORY=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/log/RECENT_HISTORY.json")#file location for storing parquet logs
-  SERVING_HALTED=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/serving_halted/serving_halted.json")#location of json file containing flag of whether model is able to predict or not
-  MONITORING_CONFIG=Path("C:/Users/nikhi/Downloads/Large-Scale-Taxi-Demand-Forecasting-System/monitoring_config/monitoring_config.json")#file that serves as flag for """Switch monitoring to high‑frequency mode via config file."""
+  MIN_PASSENGER: 1.0 # to prevent outliers
+  MAX_PASSENGER: 8.0 # to prevent outliers
+  DATA_START_DATE: "2022-03-01" #find from dataset
+  DATA_END_DATE: "2022-03-31" #find from dataset
+  TIME_GRANULARITY: "hour" #the string you pass to date_trunc that tells it what unit to round down to.
+  FILL_MISSING_ZEROS: False #true or false flag that tells the spark_pipeine to fill the missing zeros if true and not if false
+  SPARK_APP_NAME: "Taxi-Demand-Forecasting" #name of the spark app when it is initialised
+  SPARK_SHUFFLE_PARTITIONS: "200" #used here.config("spark.sql.shuffle.partitions",SPARK_SHUFFLE_PARTITIONS)
+  SPARK_DRIVER_MEMORY: "4g" # used here spark=(SparkSession.builder.appName(SPARK_APP_NAME).master("local[*]").config("spark.driver.memory",SPARK_DRIVER_MEMORY) 
+  LOG: Path("Large-Scale-Taxi-Demand-Forecasting-System/log/log.parquet") #file location for storing parquet logs
+  METRICLOG: Path("Large-Scale-Taxi-Demand-Forecasting-System/metric_log/metric_log.parquet") #'model/artifacts/metric_history_24h.json','model/artifacts/metric_history_week.json'
+  MODELCONDITIONLOG: Path("Large-Scale-Taxi-Demand-Forecasting-System/performance_log/model_performance_log.parquet")
+  PERFORMANCELOG: Path("Large-Scale-Taxi-Demand-Forecasting-System/performance_log/performance_log.parquet") # LOG THE PERFORMANCE ISSUES LIKE FEATURE DRIFT,METRIC DEGRADATION ETC WITH TIMESTAMP IN THIS LOCATION 
+  MODEL_PATH: Path("Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/model") #path of where the model is stored
+  QUANTILE_LOW_MODEL_PATH: Path("Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/quantile_low_model") #path of where the model is stored
+  QUANTILE_HIGH_MODEL_PATH: Path("Large-Scale-Taxi-Demand-Forecasting-System/models/artifacts/quantile_high_model") #path of where the model is stored
+  HOTSPOTS: Path("Large-Scale-Taxi-Demand-Forecasting-System/log/hotspots/hotspots.parquet") #file path where to store the hotspots
+  RECENT_HISTORY: Path("Large-Scale-Taxi-Demand-Forecasting-System/log/RECENT_HISTORY.json") #file location for storing parquet logs
+  SERVING_HALTED: Path("Large-Scale-Taxi-Demand-Forecasting-System/serving_halted/serving_halted.json") #location of json file containing flag of whether model is able to predict or not
+  MONITORING_CONFIG: Path("Large-Scale-Taxi-Demand-Forecasting-System/monitoring_config/monitoring_config.json")#file that serves as flag for """Switch monitoring to high‑frequency mode via config file."""
   #        config_path = Path(MONITORING_CONFIG)
   #        if config_path.exists():
   #           config = json.loads(config_path.read_text())
